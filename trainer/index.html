@@ -1,0 +1,922 @@
+<title>調頻訓練台</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: 單欄對話流。情境卡＝一段聊天紀錄，選完才揭曉分析；導航頁用「調頻刻度」選階段；底部固定四個分頁。 */
+:root{
+  --bg:#EEF1F0; --surface:#FFFFFF; --surface-2:#F5F7F6; --ink:#17201D; --muted:#5B6863; --line:#D5DCD9;
+  --accent:#B83A55; --accent-ink:#FFFFFF; --accent-soft:#F6E3E7;
+  --her:#E2E8E5; --her-ink:#17201D; --me:#22302B; --me-ink:#F3F6F5;
+  --s3:#2F7D4F; --s2:#36678A; --s1:#94650F; --s0:#B23A3A;
+  --s3-soft:#E2F0E7; --s2-soft:#E1EBF3; --s1-soft:#F5ECD9; --s0-soft:#F7E2E2;
+  --font-display:"LXGW WenKai TC","Noto Serif TC","Songti TC",serif;
+  --font-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1413; --surface:#171E1C; --surface-2:#1D2522; --ink:#E6ECE9; --muted:#94A29C; --line:#2C3633;
+    --accent:#E8768E; --accent-ink:#1A0E11; --accent-soft:#3A1F26;
+    --her:#26302D; --her-ink:#E6ECE9; --me:#E6ECE9; --me-ink:#17201D;
+    --s3:#6CC08B; --s2:#86B7DA; --s1:#E2B65A; --s0:#EF8080;
+    --s3-soft:#1B3125; --s2-soft:#1A2A36; --s1-soft:#362B16; --s0-soft:#3A1E1E;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1413; --surface:#171E1C; --surface-2:#1D2522; --ink:#E6ECE9; --muted:#94A29C; --line:#2C3633;
+  --accent:#E8768E; --accent-ink:#1A0E11; --accent-soft:#3A1F26;
+  --her:#26302D; --her-ink:#E6ECE9; --me:#E6ECE9; --me-ink:#17201D;
+  --s3:#6CC08B; --s2:#86B7DA; --s1:#E2B65A; --s0:#EF8080;
+  --s3-soft:#1B3125; --s2-soft:#1A2A36; --s1-soft:#362B16; --s0-soft:#3A1E1E;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{font-family:var(--font-body);font-size:15px;line-height:1.65;-webkit-text-size-adjust:100%}
+h1,h2,h3,h4{margin:0;text-wrap:balance}
+p{margin:0}
+button,select,textarea,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.mono{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;color:var(--muted);font-weight:500}
+.muted{color:var(--muted)}
+
+.app{max-width:640px;margin:0 auto;padding-left:max(16px, env(safe-area-inset-left, 0px));padding-right:max(16px, env(safe-area-inset-right, 0px));padding-block:18px calc(92px + env(safe-area-inset-bottom, 0px));display:flex;flex-direction:column;gap:18px}
+
+/* header */
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand h1{font-family:var(--font-display);font-size:26px;font-weight:700;letter-spacing:.04em;line-height:1.2}
+.brand h1 .freq{font-family:var(--font-mono);font-size:12px;font-weight:500;letter-spacing:.1em;color:var(--accent);margin-left:8px;vertical-align:middle}
+.brand p{color:var(--muted);font-size:13px}
+.sync{font-family:var(--font-mono);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.sync::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.sync[data-s="ok"]::before{background:var(--s3)}
+.sync[data-s="err"]::before{background:var(--s0)}
+
+/* views */
+.view{display:flex;flex-direction:column;gap:14px}
+.view-title{font-size:17px;font-weight:700;display:flex;align-items:baseline;gap:8px}
+.lede{color:var(--muted);font-size:14px;margin-top:-8px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* controls */
+.btn{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px 14px;font-weight:500;cursor:pointer;line-height:1.3}
+.btn:hover{border-color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.05)}
+.btn.small{padding:6px 11px;font-size:13px;border-radius:8px}
+.btn.ghost{background:none}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px}
+.seg button{appearance:none;border:0;background:none;padding:7px 12px;border-radius:7px;font-size:14px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:700;box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+select{appearance:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 30px 8px 12px;font-size:14px;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 16px) 52%,calc(100% - 11px) 52%;background-size:5px 5px;background-repeat:no-repeat}
+textarea,input[type="text"]{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px;line-height:1.5;resize:vertical}
+textarea::placeholder,input::placeholder{color:var(--muted)}
+.status{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:1.4;padding:2px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.stage{font-family:var(--font-mono);font-weight:500;background:var(--ink);border-color:var(--ink);color:var(--bg);letter-spacing:.04em}
+.chip.anti{color:var(--s0);border-color:color-mix(in srgb,var(--s0) 45%,transparent)}
+.chip.link{cursor:pointer;background:none}
+.chip.link:hover{border-color:var(--accent);color:var(--accent)}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+
+/* scenario */
+.scn-head{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.scn-title{font-family:var(--font-display);font-size:22px;font-weight:700;line-height:1.3}
+.ctx{color:var(--muted);font-size:14px}
+.profile{border:1px dashed var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px}
+.p-name{font-weight:700;display:flex;gap:8px;align-items:baseline}
+.p-name span{font-family:var(--font-mono);font-size:12px;color:var(--muted);font-weight:500}
+.p-photo{font-size:13px;color:var(--muted)}
+.thread{background:var(--surface-2);border-radius:14px;padding:14px 12px;display:flex;flex-direction:column;gap:6px}
+.b{max-width:84%;padding:8px 12px;border-radius:18px;font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.b.her{align-self:flex-start;background:var(--her);color:var(--her-ink);border-bottom-left-radius:5px}
+.b.me{align-self:flex-end;background:var(--me);color:var(--me-ink);border-bottom-right-radius:5px}
+.b.sys{align-self:center;background:none;padding:2px 0;font-family:var(--font-mono);font-size:11px;letter-spacing:.06em;color:var(--muted)}
+.lbl{font-size:13px;font-weight:700;display:flex;align-items:baseline;gap:8px}
+.fw{display:flex;flex-direction:column;gap:6px}
+.q{font-size:15px;font-weight:700}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opt{appearance:none;display:block;width:100%;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:15px;line-height:1.55;cursor:pointer}
+.opt:hover{border-color:var(--accent)}
+.opt.revealed{cursor:default;display:flex;flex-direction:column;gap:8px}
+.opt.revealed[data-s="3"]{background:var(--s3-soft);border-color:color-mix(in srgb,var(--s3) 40%,transparent)}
+.opt.picked{outline:2px solid var(--ink);outline-offset:-1px}
+.opt-top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mine{font-size:12px;font-weight:700}
+.why{font-size:14px;color:var(--muted)}
+.score{font-family:var(--font-mono);font-size:12px;font-weight:500;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.score[data-s="3"]{background:var(--s3-soft);color:var(--s3)}
+.score[data-s="2"]{background:var(--s2-soft);color:var(--s2)}
+.score[data-s="1"]{background:var(--s1-soft);color:var(--s1)}
+.score[data-s="0"]{background:var(--s0-soft);color:var(--s0)}
+.opt.revealed[data-s="3"] .score{background:var(--surface)}
+
+/* reveal */
+.reveal{display:flex;flex-direction:column;gap:16px;border-top:1px solid var(--line);padding-top:16px}
+.verdict{font-weight:700;font-size:16px}
+.verdict[data-s="3"]{color:var(--s3)} .verdict[data-s="2"]{color:var(--s2)} .verdict[data-s="1"]{color:var(--s1)} .verdict[data-s="0"]{color:var(--s0)}
+.rv{display:flex;flex-direction:column;gap:6px}
+.rv h4{font-size:13px;font-weight:700;display:flex;gap:8px;align-items:baseline}
+.pro{display:flex;flex-direction:column;gap:6px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.pro:last-child{border-bottom:0}
+.pro-line{font-family:var(--font-display);font-size:18px;line-height:1.55}
+.core-line{font-family:var(--font-display);font-size:18px;line-height:1.55;color:var(--accent)}
+.yours{background:var(--surface-2);border-radius:10px;padding:10px 12px}
+.checks{display:flex;flex-direction:column;gap:4px;font-size:14px}
+.checks label{display:flex;gap:8px;align-items:flex-start;cursor:pointer}
+.checks input{margin-top:5px;accent-color:var(--accent)}
+.next-row{display:flex;justify-content:flex-end}
+.saved-msg{font-size:13px;color:var(--s3)}
+.ai-out{background:var(--surface-2);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:14px}
+.thinking{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted)}
+.thinking span::after{content:"";animation:dots 1.4s steps(4) infinite}
+@keyframes dots{0%{content:""}25%{content:"."}50%{content:".."}75%{content:"..."}}
+.err{color:var(--s0)}
+
+/* summary */
+.big{font-family:var(--font-mono);font-size:40px;font-weight:500;color:var(--ink);letter-spacing:0;line-height:1.1;font-variant-numeric:tabular-nums}
+.sum-list{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.sum-list li{display:flex;justify-content:space-between;gap:10px;align-items:center;font-size:14px}
+.remind{display:flex;flex-direction:column;gap:10px;margin:0;padding:0;list-style:none}
+.remind li{font-family:var(--font-display);font-size:17px;line-height:1.5;padding-left:14px;position:relative}
+.remind li::before{content:"";position:absolute;left:0;top:.7em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+
+/* navigator dial */
+.dial-wrap{display:flex;flex-direction:column;gap:0}
+.dial{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:2px}
+.dial button{appearance:none;border:0;background:none;cursor:pointer;padding:8px 0 6px;display:flex;flex-direction:column;align-items:center;gap:0;border-radius:8px;color:var(--muted)}
+.dial button b{font-family:var(--font-mono);font-size:13px;font-weight:500;letter-spacing:.04em}
+.dial button span{font-size:14px}
+.dial button[aria-pressed="true"]{color:var(--accent)}
+.dial button[aria-pressed="true"] span{font-weight:700}
+.band{position:relative;height:22px;border-bottom:1px solid var(--line);background-image:repeating-linear-gradient(to right,var(--line) 0 1px,transparent 1px 8px);background-size:100% 9px;background-repeat:no-repeat;background-position:bottom}
+.needle{position:absolute;bottom:-1px;width:2px;height:22px;background:var(--accent);left:calc(var(--i, 1) * (100% / 6) + (100% / 12));transform:translateX(-1px);transition:left .35s cubic-bezier(.3,.7,.2,1)}
+.needle::before{content:"";position:absolute;top:-4px;left:-3px;width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.sd-goal{font-family:var(--font-display);font-size:19px;line-height:1.45}
+.sd-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.sd-grid ul{margin:4px 0 0;padding-left:18px;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.sd-exit{font-size:14px;background:var(--surface-2);border-radius:10px;padding:10px 12px}
+
+/* signals */
+.sig{display:flex;flex-direction:column;gap:2px}
+.sig label{display:flex;gap:10px;align-items:flex-start;font-size:14px;padding:6px 0;cursor:pointer;border-bottom:1px solid var(--line)}
+.sig label:last-child{border-bottom:0}
+.sig input{margin-top:5px;accent-color:var(--accent)}
+.sig .w{margin-left:auto;font-family:var(--font-mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.meter{display:flex;flex-direction:column;gap:8px}
+.meter-track{height:10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line);position:relative;overflow:hidden}
+.meter-fill{position:absolute;inset:0 auto 0 0;border-radius:999px;transition:width .3s}
+.meter-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.meter-head b{font-size:16px}
+
+/* AI nav result */
+.dir{display:flex;flex-direction:column;gap:4px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.dir:last-child{border-bottom:0}
+.dir-head{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700;font-size:14px}
+pre.prompt{white-space:pre-wrap;word-break:break-word;background:var(--surface-2);border-radius:10px;padding:12px;font-size:13px;line-height:1.6;margin:0;max-height:260px;overflow:auto;font-family:var(--font-body)}
+details.card > summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;gap:10px}
+details.card > summary::-webkit-details-marker{display:none}
+details.card > summary::after{content:"＋";color:var(--muted)}
+details.card[open] > summary::after{content:"－"}
+
+/* theory */
+.pr{display:flex;flex-direction:column;gap:4px;padding:12px 0;border-bottom:1px solid var(--line)}
+.pr:last-child{border-bottom:0}
+.pr h3{font-family:var(--font-display);font-size:19px;font-weight:700;display:flex;gap:10px;align-items:baseline}
+.pr p{font-size:14px}
+.tech{border-bottom:1px solid var(--line);padding:2px 0}
+.tech:last-child{border-bottom:0}
+.tech summary{cursor:pointer;display:flex;align-items:center;gap:8px;padding:10px 0;list-style:none;font-weight:700}
+.tech summary::-webkit-details-marker{display:none}
+.tech summary .mono{margin-left:auto}
+.tech-body{display:flex;flex-direction:column;gap:6px;padding:0 0 12px;font-size:14px}
+.formula{font-family:var(--font-display);font-size:17px;color:var(--accent);line-height:1.5}
+.tech-body ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.tech.flash{animation:flash 1.2s}
+@keyframes flash{0%{background:var(--accent-soft)}100%{background:transparent}}
+.anti-item{display:flex;flex-direction:column;gap:2px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.anti-item:last-child{border-bottom:0}
+.anti-item b{color:var(--s0)}
+
+/* notes */
+.stat-top{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stat-top div{display:flex;flex-direction:column;gap:2px}
+.stat-top b{font-family:var(--font-mono);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat-top span{font-size:12px;color:var(--muted)}
+.bars{display:flex;flex-direction:column;gap:8px}
+.bar-row{display:grid;grid-template-columns:64px minmax(0,1fr) 88px;gap:10px;align-items:center;font-size:13px}
+.bar-row .track{height:8px;background:var(--surface-2);border:1px solid var(--line);border-radius:999px;position:relative;overflow:hidden}
+.bar-row .fill{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:999px}
+.bar-row .v{font-family:var(--font-mono);font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.list{display:flex;flex-direction:column}
+.item{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-bottom:1px solid var(--line)}
+.item:last-child{border-bottom:0}
+.item .meta{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.item .txt{white-space:pre-wrap;overflow-wrap:anywhere}
+.item .txt.line{font-family:var(--font-display);font-size:17px}
+.empty{color:var(--muted);font-size:14px}
+.danger{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.confirm{display:flex;flex-direction:column;gap:8px;font-size:14px;background:var(--s0-soft);border-radius:10px;padding:12px}
+
+/* tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px);padding-left:max(8px, env(safe-area-inset-left, 0px));padding-right:max(8px, env(safe-area-inset-right, 0px))}
+.tabs-in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.tab{appearance:none;border:0;background:none;cursor:pointer;padding:9px 4px 11px;display:flex;flex-direction:column;align-items:center;gap:0;color:var(--muted)}
+.tab span{font-size:15px;font-weight:500}
+.tab .mono{font-size:10px}
+.tab[aria-current="page"]{color:var(--accent)}
+.tab[aria-current="page"] .mono{color:var(--accent)}
+
+:root:not(.ai-on) .ai-only{display:none !important}
+:root.ai-on .no-ai{display:none !important}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important}
+}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>調頻<span class="freq">TUNE·IN</span></h1>
+      <p>上場前，先把腦袋調到對的頻率</p>
+    </div>
+    <div class="sync" id="sync" data-s="local">只存在這個瀏覽器</div>
+  </header>
+
+  <main>
+    <!-- 暖身 -->
+    <section class="view" id="v-drill" aria-label="暖身">
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="練習模式">
+          <button type="button" data-mode="warm" aria-pressed="true">暖身五題</button>
+          <button type="button" data-mode="all" aria-pressed="false">全部題目</button>
+        </div>
+        <label for="stage-filter" class="sr">階段篩選</label>
+        <select id="stage-filter"></select>
+      </div>
+      <div class="status">
+        <span id="drill-status"></span>
+        <button type="button" class="btn small ai-only" id="gen-btn">AI 出一題新的</button>
+      </div>
+      <article class="card" id="drill-card"></article>
+    </section>
+
+    <!-- 導航 -->
+    <section class="view" id="v-nav" aria-label="導航" hidden>
+      <h2 class="view-title">我現在在哪？</h2>
+      <p class="lede">選最像你現在狀況的階段，看下一步往哪推。</p>
+      <div class="card">
+        <div class="dial-wrap">
+          <div class="dial" id="dial"></div>
+          <div class="band" aria-hidden="true"><span class="needle" id="needle"></span></div>
+        </div>
+        <div id="stage-detail" style="display:flex;flex-direction:column;gap:14px"></div>
+      </div>
+
+      <h2 class="view-title">她的投入度 <span class="mono">INVESTMENT</span></h2>
+      <p class="lede">勾選你在對話裡看到的訊號。</p>
+      <div class="card">
+        <div class="sig" id="signals"></div>
+        <div class="meter" id="meter"></div>
+      </div>
+
+      <h2 class="view-title">AI 導航 <span class="mono">LIVE</span></h2>
+      <div class="card ai-only">
+        <p class="muted" style="font-size:14px">貼上對話或上傳截圖，幫你判斷階段、潛台詞，並給三個方向。用的是你自己的 Claude 額度，不會另外收費。</p>
+        <div class="fw">
+          <label class="lbl" for="nav-text">對話內容</label>
+          <textarea id="nav-text" rows="5" placeholder="她：今天加班到十點 累死了&#10;我：…&#10;（也可以只上傳截圖）"></textarea>
+        </div>
+        <div class="fw" id="nav-img-wrap" hidden>
+          <label class="lbl" for="nav-img">聊天截圖（可多張）</label>
+          <input type="file" id="nav-img" accept="image/*" multiple>
+          <span class="muted" id="nav-img-info" style="font-size:13px"></span>
+        </div>
+        <div class="fw">
+          <label class="lbl" for="nav-ctx">背景（選填）</label>
+          <input type="text" id="nav-ctx" placeholder="例如：聊了三天、她是護理師、還沒換 LINE">
+        </div>
+        <div class="row"><button type="button" class="btn primary" id="nav-go">分析</button></div>
+        <div class="ai-out" id="nav-out" hidden></div>
+      </div>
+      <div class="card no-ai">
+        <p style="font-size:14px">在 claude.ai 或 Claude App 裡打開這個頁面，並允許它使用 Claude，就能開啟 AI 導航、AI 評分和 AI 出題。用的是你自己的訂閱額度，不需要 API key。</p>
+        <p class="muted" style="font-size:14px">現在也可以用下面這段指令，直接在 Claude App 裡貼截圖問。</p>
+      </div>
+      <details class="card">
+        <summary>在 Claude App 裡用同一套導航</summary>
+        <p class="muted" style="font-size:14px">建議在 Claude App 開一個專案，把這段貼進專案指示。之後每次只要丟截圖進去就好。</p>
+        <pre class="prompt" id="app-prompt"></pre>
+        <div class="row"><button type="button" class="btn small" id="copy-prompt">複製指令</button><span class="saved-msg" id="copy-prompt-msg" aria-live="polite"></span></div>
+      </details>
+    </section>
+
+    <!-- 心法 -->
+    <section class="view" id="v-theory" aria-label="心法" hidden>
+      <h2 class="view-title">心法 <span class="mono">INNER GAME</span></h2>
+      <p class="lede">技巧會忘，心法不會。每次上場前讀一遍。</p>
+      <div class="card" id="principles" style="gap:0;padding-block:4px"></div>
+      <h2 class="view-title">技巧 <span class="mono">TECHNIQUES</span></h2>
+      <p class="lede">點開看公式和範例。</p>
+      <div class="card" id="techniques" style="gap:0;padding-block:4px"></div>
+      <h2 class="view-title">誤區 <span class="mono">TRAPS</span></h2>
+      <p class="lede">最常扣分的回覆模式。</p>
+      <div class="card" id="antis" style="gap:0;padding-block:4px"></div>
+    </section>
+
+    <!-- 筆記 -->
+    <section class="view" id="v-notes" aria-label="筆記" hidden>
+      <h2 class="view-title">你的進度 <span class="mono">LOG</span></h2>
+      <div class="card" id="stats"></div>
+      <h2 class="view-title">寫一條心得</h2>
+      <div class="card">
+        <label for="note-input" class="sr">心得</label>
+        <textarea id="note-input" rows="3" placeholder="例如：她回得短的時候，我要回得更短更輕，不要追。"></textarea>
+        <div class="row"><button type="button" class="btn primary" id="note-add">存起來</button><span class="saved-msg" id="note-msg" aria-live="polite"></span></div>
+      </div>
+      <h2 class="view-title">我的筆記</h2>
+      <div class="card"><div class="list" id="notes-list"></div></div>
+      <h2 class="view-title">金句收藏</h2>
+      <div class="card"><div class="list" id="lines-list"></div></div>
+      <div class="danger">
+        <button type="button" class="btn small ghost" id="reset-btn">清除答題紀錄</button>
+        <div class="confirm" id="reset-confirm" hidden>
+          <span>確定清除所有答題紀錄嗎？筆記、金句和 AI 出的題目會保留。</span>
+          <div class="row"><button type="button" class="btn small" id="reset-yes">清除</button><button type="button" class="btn small ghost" id="reset-no">取消</button></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="tabs" aria-label="分頁">
+  <div class="tabs-in">
+    <button type="button" class="tab" data-view="drill"><span>暖身</span><b class="mono">DRILL</b></button>
+    <button type="button" class="tab" data-view="nav"><span>導航</span><b class="mono">NAV</b></button>
+    <button type="button" class="tab" data-view="theory"><span>心法</span><b class="mono">CORE</b></button>
+    <button type="button" class="tab" data-view="notes"><span>筆記</span><b class="mono">LOG</b></button>
+  </div>
+</nav>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  "use strict";
+  const D = window.TUNE;
+  const $ = (s, el) => (el || document).querySelector(s);
+  const $$ = (s, el) => Array.from((el || document).querySelectorAll(s));
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const STAGE = Object.fromEntries(D.STAGES.map((s) => [s.id, s]));
+  const LABEL = { 3: "高手", 2: "不錯", 1: "普通", 0: "扣分" };
+  const tagName = (t) => D.TAGS[t] || t;
+  const isAnti = (t) => D.ANTI.includes(t);
+  const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const fmtDate = (t) => { const d = new Date(t); return (d.getMonth() + 1) + "/" + d.getDate(); };
+
+  const APP_PROMPT = [
+    "你是我的約會聊天導航教練。我會貼交友軟體的聊天截圖或文字，請用台灣繁體中文回答，口語、直接、具體。",
+    "",
+    "分析框架：",
+    "- 階段：S0 救援／S1 開場／S2 吸引／S3 連結／S4 升溫／S5 邀約",
+    "- 心法：情緒大於資訊、投入度平衡、框架要穩、推拉（肯定＋調侃，不是打壓）、由我帶方向、最後真誠表明意圖",
+    "- 不要建議：打壓（negging）、製造競爭焦慮、情緒勒索、說謊",
+    "",
+    "每次請給我：",
+    "1. 現在在哪個階段，為什麼",
+    "2. 她的投入度（高／中／低），以及你看到的訊號",
+    "3. 她最後一則訊息的潛台詞",
+    "4. 三個方向，各給一則可以直接傳的訊息（短、像真人、台灣用語），標出用的技巧和原因",
+    "5. 現在最不該做的一件事",
+    "6. 一句心法",
+    "",
+    "截圖裡右邊的氣泡是我，左邊是她。",
+  ].join("\n");
+
+  const COACH_FRAME = [
+    "你是一位專業的約會聊天教練，用台灣繁體中文，風格直接、具體、有幽默感。",
+    "教學框架：",
+    "- 階段：S0 救援、S1 開場、S2 吸引、S3 連結、S4 升溫、S5 邀約",
+    "- 心法：情緒大於資訊；投入度平衡（不要比她更用力）；框架要穩（被虧被試探不辯解）；推拉＝肯定＋調侃，不是打壓；由你帶方向；最後真誠表明意圖",
+    "- 不教也不鼓勵：打壓（negging）、製造競爭焦慮、情緒勒索、說謊。學員如果用了這些，給低分並說明為什麼會反效果。",
+    "建議的訊息要像真人在聊天：短、口語、台灣用語，不要像文案或廣告。",
+  ].join("\n");
+
+  /* ───────── store ───────── */
+  const LS_KEY = "tunein.v1";
+  const store = { answers: {}, notes: [], lines: [], gen: [], col: null };
+  function lsLoad() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      store.answers = d.answers || {}; store.notes = d.notes || []; store.lines = d.lines || []; store.gen = d.gen || [];
+    } catch (e) { /* ignore */ }
+  }
+  function lsSave() {
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ answers: store.answers, notes: store.notes, lines: store.lines, gen: store.gen })); } catch (e) { /* ignore */ }
+  }
+  function setSync(s) {
+    const el = $("#sync"); el.dataset.s = s;
+    el.textContent = s === "ok" ? "已同步到你的帳號" : s === "err" ? "同步失敗，先存在瀏覽器" : "只存在這個瀏覽器";
+  }
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej({ code: "timeout" }), ms))]);
+  async function dbWrite(id, data) {
+    lsSave();
+    if (!store.col) return;
+    try { await store.col.doc(id).set(data); setSync("ok"); } catch (e) { setSync("err"); }
+  }
+  async function dbDelete(id) {
+    lsSave();
+    if (!store.col) return;
+    try { await store.col.doc(id).delete(); } catch (e) { setSync("err"); }
+  }
+  async function dbInit() {
+    if (!window.claude || !window.claude.use) return;
+    try {
+      const [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]);
+      if (!db || !user) return;
+      const uid = await user.id();
+      if (!uid) return;
+      const col = db.collection("data/users/" + uid);
+      const snap = await withTimeout(col.get(), 10000);
+      store.col = col;
+      if (snap.empty) {
+        // 第一次同步：把瀏覽器裡的紀錄搬上去
+        await dbWrite("progress", { answers: store.answers });
+        for (const n of store.notes) await dbWrite(n.id, { kind: "note", text: n.text, sid: n.sid || "", at: n.at });
+        for (const l of store.lines) await dbWrite(l.id, { kind: "line", text: l.text, sid: l.sid || "", at: l.at });
+        for (const g of store.gen) await dbWrite(g.id, { kind: "gen", scenario: g.scenario, at: g.at });
+      } else {
+        const answers = {}, notes = [], lines = [], gen = [];
+        snap.docs.forEach((doc) => {
+          const d = doc.data() || {};
+          if (doc.id === "progress") Object.assign(answers, d.answers || {});
+          else if (d.kind === "note") notes.push({ id: doc.id, text: d.text, sid: d.sid, at: d.at });
+          else if (d.kind === "line") lines.push({ id: doc.id, text: d.text, sid: d.sid, at: d.at });
+          else if (d.kind === "gen" && d.scenario) gen.push({ id: doc.id, scenario: d.scenario, at: d.at });
+        });
+        const by = (a, b) => (b.at || 0) - (a.at || 0);
+        store.answers = answers; store.notes = notes.sort(by); store.lines = lines.sort(by); store.gen = gen.sort((a, b) => (a.at || 0) - (b.at || 0));
+        lsSave();
+      }
+      setSync("ok");
+      renderNotes();
+      if (state.view === "drill" && !$("#drill-card").dataset.sid) renderDrill();
+    } catch (e) {
+      setSync(store.col ? "err" : "local");
+    }
+  }
+  const saveProgress = () => dbWrite("progress", { answers: store.answers });
+  function addNote(text, sid) {
+    text = String(text || "").trim(); if (!text) return false;
+    const at = Date.now(), id = "n_" + at;
+    store.notes.unshift({ id, text, sid: sid || "", at });
+    dbWrite(id, { kind: "note", text, sid: sid || "", at });
+    renderNotes(); return true;
+  }
+  function addLine(text, sid) {
+    text = String(text || "").trim(); if (!text) return false;
+    if (store.lines.some((l) => l.text === text)) return true;
+    const at = Date.now(), id = "l_" + at;
+    store.lines.unshift({ id, text, sid: sid || "", at });
+    dbWrite(id, { kind: "line", text, sid: sid || "", at });
+    renderNotes(); return true;
+  }
+
+  /* ───────── AI (sample) ───────── */
+  let sample = null, sampleLimits = null;
+  const PERMANENT = ["not_granted", "sampling_disabled", "not_declared", "capability_disabled", "capability_removed"];
+  function aiMsg(e) {
+    const c = e && e.code;
+    if (c === "cancelled") return "已停止。";
+    if (PERMANENT.includes(c)) return "這個頁面目前不能使用 Claude。要開啟的話，請在 Claude App 或 claude.ai 裡允許它。";
+    if (c === "rate_limited") return "你的 Claude 用量暫時到上限了，晚一點再試。";
+    if (c === "session_expired") return "登入過期了，請重新登入 Claude 再試。";
+    if (c === "refused") return "Claude 沒有回答這段內容，換個說法再試。";
+    if (c === "invalid_json") return "回覆格式跑掉了，再按一次試試。";
+    if (c === "image_rejected") return "截圖格式或大小不支援，換一張試試。";
+    if (c === "prompt_too_large") return "內容太長了，刪掉一些再試。";
+    if (c === "images_unavailable") return "這裡不能傳截圖，請改貼文字。";
+    return "連線中斷了，再試一次。";
+  }
+  async function aiInit() {
+    if (!window.claude || !window.claude.use) return;
+    try { sample = await window.claude.use("sample"); } catch (e) { sample = null; }
+    if (!sample) return;
+    document.documentElement.classList.add("ai-on");
+    try { sampleLimits = await sample.limits(); } catch (e) { sampleLimits = null; }
+    if (sampleLimits && sampleLimits.images) {
+      $("#nav-img-wrap").hidden = false;
+      $("#nav-img").accept = sampleLimits.images.mediaTypes.join(",");
+    }
+  }
+  async function runAI(out, btn, prompt, opts, onData) {
+    if (!sample) return;
+    const ctl = new AbortController();
+    btn.disabled = true; out.hidden = false;
+    out.innerHTML = '<div class="thinking"><span>思考中</span><button type="button" class="btn small">停止</button></div>';
+    out.querySelector("button").onclick = () => ctl.abort();
+    try {
+      const data = await sample.json(prompt, Object.assign({ signal: ctl.signal }, opts || {}));
+      onData(data);
+    } catch (e) {
+      out.innerHTML = '<p class="' + (e && e.code === "cancelled" ? "muted" : "err") + '">' + esc(aiMsg(e)) + "</p>";
+      if (e && PERMANENT.includes(e.code)) { sample = null; document.documentElement.classList.remove("ai-on"); }
+    } finally { btn.disabled = false; }
+  }
+  function scenarioText(s) {
+    const lines = [];
+    if (s.profile) lines.push("她的檔案：" + [s.profile.name, s.profile.age, s.profile.bio, s.profile.photo].filter(Boolean).join("｜"));
+    lines.push("情境：" + s.context);
+    (s.chat || []).forEach((m) => lines.push((m.who === "me" ? "我：" : m.who === "her" ? "她：" : "（") + m.text + (m.who === "sys" ? "）" : "")));
+    if (!(s.chat || []).length) lines.push("（還沒有對話，學員要傳第一句）");
+    return lines.join("\n");
+  }
+  function coach(s, line, task, out, btn) {
+    const prompt = COACH_FRAME + "\n\n階段：" + s.stage + " " + (STAGE[s.stage] || {}).name + "\n" + scenarioText(s) +
+      "\n\n任務：" + task + "\n學員寫的回覆：「" + line + "」\n\n" +
+      '請評分，只回覆一個 JSON 物件：{"score":0到3的整數,"techniques":["用到的技巧名稱"],"good":"做得好的地方，一句","fix":"最需要改的地方，一句","upgraded":"保留學員原意、升級後的一則訊息","why":"升級版為什麼更好，一句"}';
+    runAI(out, btn, prompt, { modelTier: "default" }, (d) => {
+      const sc = Math.max(0, Math.min(3, parseInt(d && d.score, 10) || 0));
+      const techs = Array.isArray(d.techniques) ? d.techniques.slice(0, 5) : [];
+      out.innerHTML =
+        '<div class="opt-top"><span class="score" data-s="' + sc + '">' + LABEL[sc] + " " + sc + "/3</span>" + techs.map((t) => '<span class="chip">' + esc(t) + "</span>").join("") + "</div>" +
+        (d.good ? "<p><b>做得好：</b>" + esc(d.good) + "</p>" : "") +
+        (d.fix ? "<p><b>要改：</b>" + esc(d.fix) + "</p>" : "") +
+        (d.upgraded ? '<div class="pro"><p class="pro-line">' + esc(d.upgraded) + '</p><div class="row"><button type="button" class="btn small" data-act="save-line" data-text="' + esc(d.upgraded) + '">收藏</button></div></div>' : "") +
+        (d.why ? '<p class="muted">' + esc(d.why) + "</p>" : "");
+    });
+  }
+
+  /* ───────── drill ───────── */
+  const state = { view: "drill", mode: "warm", filter: "all", queue: [], pos: 0, session: [] };
+  const allScenarios = () => D.SCENARIOS.concat(store.gen.map((g) => g.scenario));
+  const byId = (id) => allScenarios().find((s) => s.id === id);
+  const filtered = () => allScenarios().filter((s) => state.filter === "all" || s.stage === state.filter);
+
+  function buildQueue() {
+    const list = filtered();
+    if (state.mode === "all") { state.queue = list.map((s) => s.id); }
+    else {
+      const unseen = shuffle(list.filter((s) => !store.answers[s.id]));
+      const weak = shuffle(list.filter((s) => store.answers[s.id] && store.answers[s.id].score < 3));
+      const rest = shuffle(list.filter((s) => store.answers[s.id] && store.answers[s.id].score === 3));
+      state.queue = unseen.concat(weak, rest).slice(0, 5).map((s) => s.id);
+    }
+    state.pos = 0; state.session = [];
+  }
+  function threadHTML(chat) {
+    if (!chat || !chat.length) return '<div class="thread"><div class="b sys">剛配對・還沒有訊息・輪到你</div></div>';
+    return '<div class="thread">' + chat.map((m) => '<div class="b ' + (m.who === "me" ? "me" : m.who === "her" ? "her" : "sys") + '">' + esc(m.text) + "</div>").join("") + "</div>";
+  }
+  function optionsHTML(s, order, picked) {
+    return order.map((i) => {
+      const o = s.options[i];
+      if (picked == null) return '<button type="button" class="opt" data-act="pick" data-i="' + i + '">' + esc(o.text) + "</button>";
+      const tags = (o.tags || []).map((t) => '<span class="chip' + (isAnti(t) ? " anti" : "") + '">' + esc(tagName(t)) + "</span>").join("");
+      return '<div class="opt revealed' + (i === picked ? " picked" : "") + '" data-s="' + o.score + '">' +
+        '<div class="opt-top"><span class="score" data-s="' + o.score + '">' + LABEL[o.score] + " " + o.score + "/3</span>" + (i === picked ? '<span class="mine">你的選擇</span>' : "") + "</div>" +
+        "<p>" + esc(o.text) + "</p>" + (tags ? '<div class="tags">' + tags + "</div>" : "") + '<p class="why">' + esc(o.why) + "</p></div>";
+    }).join("");
+  }
+  function renderDrill() {
+    const card = $("#drill-card");
+    const total = filtered().length, done = filtered().filter((s) => store.answers[s.id]).length;
+    if (!state.queue.length) buildQueue();
+    if (state.mode === "warm") {
+      $("#drill-status").textContent = state.pos < state.queue.length ? "第 " + (state.pos + 1) + " / " + state.queue.length + " 題" : "暖身完成";
+    } else {
+      $("#drill-status").textContent = "第 " + Math.min(state.pos + 1, state.queue.length) + " / " + state.queue.length + " 題・已練過 " + done + " / " + total;
+    }
+    if (!state.queue.length) { card.dataset.sid = ""; card.innerHTML = '<p class="empty">這個階段還沒有題目。</p>'; return; }
+    if (state.pos >= state.queue.length) {
+      if (state.mode === "warm") return renderSummary();
+      state.pos = 0;
+    }
+    const s = byId(state.queue[state.pos]);
+    if (!s) { state.queue.splice(state.pos, 1); return renderDrill(); }
+    const order = shuffle(s.options.map((_, i) => i));
+    const prev = store.answers[s.id];
+    card.dataset.sid = s.id; card.dataset.order = JSON.stringify(order); card.dataset.done = "";
+    card.innerHTML =
+      '<div class="scn-head"><span class="chip stage">' + esc(s.stage) + " " + esc((STAGE[s.stage] || {}).name || "") + "</span>" +
+      (s.ai ? '<span class="chip">AI 出題</span>' : "") + (prev ? '<span class="chip">上次：' + LABEL[prev.score] + "</span>" : "") + "</div>" +
+      '<h2 class="scn-title">' + esc(s.title) + "</h2>" +
+      (s.profile ? '<div class="profile"><div class="p-name">' + esc(s.profile.name) + "<span>" + esc(s.profile.age) + " 歲</span></div><p>" + esc(s.profile.bio) + "</p>" + (s.profile.photo ? '<p class="p-photo">照片：' + esc(s.profile.photo) + "</p>" : "") + "</div>" : "") +
+      '<p class="ctx">' + esc(s.context) + "</p>" + threadHTML(s.chat) +
+      '<div class="fw"><label class="lbl" for="fw-input">先自己寫一句 <span class="mono">WRITE FIRST</span></label>' +
+      '<textarea id="fw-input" rows="2" placeholder="不看選項，先打你會傳的那句。寫完再選，學得最快。"></textarea></div>' +
+      '<h3 class="q">你會怎麼回？</h3><div class="opts">' + optionsHTML(s, order, null) + "</div>" +
+      '<div class="reveal" hidden></div>';
+  }
+  function verdict(sc) {
+    return sc === 3 ? "高手選擇。" : sc === 2 ? "不錯，但還有更好的。" : sc === 1 ? "普通。安全，但沒有推進。" : "這個會扣分，看看為什麼。";
+  }
+  function pick(i) {
+    const card = $("#drill-card");
+    if (card.dataset.done) return;
+    const s = byId(card.dataset.sid); if (!s) return;
+    card.dataset.done = "1";
+    const o = s.options[i];
+    const bestTags = s.options.filter((x) => x.score === 3).flatMap((x) => x.tags || []).filter((t) => !isAnti(t));
+    store.answers[s.id] = { score: o.score, pick: i, at: Date.now(), stage: s.stage, best: bestTags, picked: o.tags || [] };
+    saveProgress();
+    if (state.mode === "warm") state.session.push({ id: s.id, score: o.score });
+    const order = JSON.parse(card.dataset.order);
+    $(".opts", card).innerHTML = optionsHTML(s, order, i);
+    const fw = $("#fw-input").value.trim();
+    $("#fw-input").closest(".fw").hidden = true;
+    const last = state.mode === "warm" && state.pos === state.queue.length - 1;
+    const rv = $(".reveal", card);
+    rv.innerHTML =
+      '<p class="verdict" data-s="' + o.score + '">' + verdict(o.score) + "</p>" +
+      (fw ? '<section class="rv"><h4>你自己寫的 <span class="mono">YOURS</span></h4><p class="yours">' + esc(fw) + "</p>" +
+        '<div class="checks">' + ["有情緒，不只是資訊", "她很好回（有鉤子、不用想很久）", "長度跟她差不多或更短", "有推也有拉，或在該認真的時候真誠"].map((t, k) =>
+          '<label for="chk-' + k + '"><input type="checkbox" id="chk-' + k + '"><span>' + t + "</span></label>").join("") + "</div>" +
+        '<div class="row ai-only"><button type="button" class="btn small" data-act="coach-fw">AI 教練評這句</button></div>' +
+        '<div class="ai-out" id="coach-fw-out" hidden></div></section>' : "") +
+      '<section class="rv"><h4>她的潛台詞 <span class="mono">SUBTEXT</span></h4><p>' + esc(s.subtext) + "</p></section>" +
+      '<section class="rv"><h4>現在在哪 <span class="mono">READ</span></h4><p>' + esc(s.read) + "</p></section>" +
+      '<section class="rv"><h4>高手示範 <span class="mono">PRO LINES</span></h4>' +
+        (s.best || []).map((l) => '<div class="pro"><p class="pro-line">' + esc(l) + '</p><div class="row"><button type="button" class="btn small" data-act="save-line" data-text="' + esc(l) + '">收藏</button></div></div>').join("") + "</section>" +
+      '<section class="rv"><h4>心法 <span class="mono">CORE</span></h4><p class="core-line">' + esc(s.principle) + "</p></section>" +
+      '<section class="rv"><h4>變形練習 <span class="mono">DRILL</span></h4><p>' + esc(s.drill) + "</p>" +
+        '<label for="drill-input" class="sr">變形練習答案</label><textarea id="drill-input" rows="2" placeholder="把你的答案寫在這裡"></textarea>' +
+        '<div class="row"><button type="button" class="btn small ai-only" data-act="coach-drill">AI 評分</button><button type="button" class="btn small" data-act="save-drill">存到筆記</button><span class="saved-msg" aria-live="polite"></span></div>' +
+        '<div class="ai-out" id="coach-drill-out" hidden></div></section>' +
+      '<section class="rv"><h4>一句話歸納 <span class="mono">TAKEAWAY</span></h4>' +
+        '<label for="take-input" class="sr">歸納</label><textarea id="take-input" rows="2" placeholder="用你自己的話寫下這題學到什麼"></textarea>' +
+        '<div class="row"><button type="button" class="btn small" data-act="save-take">存到筆記</button><span class="saved-msg" aria-live="polite"></span></div></section>' +
+      '<div class="next-row"><button type="button" class="btn primary" data-act="next">' + (last ? "看暖身結果" : "下一題") + "</button></div>";
+    rv.dataset.fw = fw;
+    rv.hidden = false;
+    renderNotes();
+  }
+  function renderSummary() {
+    const card = $("#drill-card"); card.dataset.sid = "";
+    const got = state.session.reduce((a, b) => a + b.score, 0), max = state.session.length * 3;
+    const missed = state.session.filter((x) => x.score < 3).map((x) => byId(x.id)).filter(Boolean);
+    let reminders = missed.map((s) => s.principle);
+    if (reminders.length < 3) reminders = reminders.concat(shuffle(D.PRINCIPLES).map((p) => p.title + "：" + p.body.split("。")[0] + "。"));
+    reminders = reminders.slice(0, 3);
+    card.innerHTML =
+      '<div class="scn-head"><span class="chip stage">DONE</span></div><h2 class="scn-title">暖身完成</h2>' +
+      '<p class="big">' + got + '<span class="mono" style="font-size:16px"> / ' + max + "</span></p>" +
+      '<ul class="sum-list">' + state.session.map((x) => { const s = byId(x.id); return "<li><span>" + esc(s ? s.title : x.id) + '</span><span class="score" data-s="' + x.score + '">' + LABEL[x.score] + "</span></li>"; }).join("") + "</ul>" +
+      '<section class="rv"><h4>上場前記住這三句 <span class="mono">BEFORE YOU GO</span></h4><ul class="remind">' + reminders.map((r) => "<li>" + esc(r) + "</li>").join("") + "</ul></section>" +
+      '<div class="row" style="justify-content:flex-end"><button type="button" class="btn" data-act="goto-notes">看筆記</button><button type="button" class="btn primary" data-act="again">再來五題</button></div>';
+  }
+  async function genScenario(btn) {
+    if (!sample) return;
+    const stages = D.STAGES.map((s) => s.id);
+    const stage = state.filter === "all" ? stages[Math.floor(Math.random() * stages.length)] : state.filter;
+    const st = STAGE[stage];
+    const ex = D.SCENARIOS.find((s) => s.stage === stage) || D.SCENARIOS[0];
+    const exObj = Object.assign({}, ex); delete exObj.id;
+    const usedTitles = allScenarios().map((s) => s.title).join("、");
+    const tagList = Object.keys(D.TAGS).map((k) => k + "=" + D.TAGS[k]).join("，");
+    const prompt = COACH_FRAME + "\n\n請出一題新的選擇題訓練情境，階段是 " + stage + " " + st.name + "（目標：" + st.goal + "）。\n" +
+      "要求：台灣的生活情境（交友軟體聊天），對話口語自然；4 個選項分別是 3、2、1、0 分各一個，順序打亂；0 分選項要是常見錯誤；每個選項的 why 說明原因；best 給 1 到 2 句高手示範。\n" +
+      "不要跟這些題目重複：" + usedTitles + "\n" +
+      "tags 只能用這些 id：" + tagList + "\n" +
+      "chat 的 who 只能是 her、me 或 sys。開場題可以給 profile 並讓 chat 是空陣列。\n" +
+      "格式跟這個範例完全相同（內容要全新）：\n" + JSON.stringify(exObj) + "\n\n只回覆一個 JSON 物件。";
+    const card = $("#drill-card");
+    const out = document.createElement("div"); out.className = "ai-out";
+    card.prepend(out);
+    await runAI(out, btn, prompt, { modelTier: "default", cache: false }, (d) => {
+      const s = normalizeScenario(d, stage);
+      if (!s) { out.innerHTML = '<p class="err">AI 出的題目格式不完整，再按一次試試。</p>'; return; }
+      const at = Date.now();
+      s.id = "gen-" + at;
+      store.gen.push({ id: "g_" + at, scenario: s, at });
+      dbWrite("g_" + at, { kind: "gen", scenario: s, at });
+      state.queue.splice(state.pos, 0, s.id);
+      renderDrill();
+      window.scrollTo({ top: 0 });
+    });
+  }
+  function normalizeScenario(d, stage) {
+    if (!d || typeof d !== "object" || !Array.isArray(d.options) || d.options.length < 3) return null;
+    const str = (v) => (v == null ? "" : String(v));
+    const opts = d.options.slice(0, 4).map((o) => ({
+      text: str(o && o.text), score: Math.max(0, Math.min(3, parseInt(o && o.score, 10) || 0)),
+      tags: Array.isArray(o && o.tags) ? o.tags.map(String).filter((t) => D.TAGS[t]) : [], why: str(o && o.why),
+    })).filter((o) => o.text);
+    if (opts.length < 3) return null;
+    const chat = Array.isArray(d.chat) ? d.chat.map((m) => ({ who: ["her", "me", "sys"].includes(m && m.who) ? m.who : "her", text: str(m && m.text) })).filter((m) => m.text) : [];
+    const p = d.profile && typeof d.profile === "object" ? { name: str(d.profile.name), age: str(d.profile.age), bio: str(d.profile.bio), photo: str(d.profile.photo) } : null;
+    const out = {
+      stage, ai: true, title: str(d.title) || "AI 新題", context: str(d.context), chat, options: opts,
+      subtext: str(d.subtext), read: str(d.read), best: Array.isArray(d.best) ? d.best.map(str).filter(Boolean).slice(0, 3) : (d.best ? [str(d.best)] : []),
+      principle: str(d.principle), drill: str(d.drill),
+    };
+    if (p && (p.name || p.bio)) out.profile = p;
+    return out;
+  }
+  function flashSaved(btn, msg) {
+    const m = btn.parentElement.querySelector(".saved-msg");
+    if (m) { m.textContent = msg; setTimeout(() => { m.textContent = ""; }, 2000); }
+    else { const t = btn.textContent; btn.textContent = msg; btn.disabled = true; setTimeout(() => { btn.textContent = t; btn.disabled = false; }, 1500); }
+  }
+  $("#drill-card").addEventListener("click", (ev) => {
+    const b = ev.target.closest("[data-act]"); if (!b) return;
+    const act = b.dataset.act, card = $("#drill-card"), sid = card.dataset.sid, s = sid && byId(sid);
+    if (act === "pick") pick(parseInt(b.dataset.i, 10));
+    else if (act === "next") { state.pos++; renderDrill(); window.scrollTo({ top: 0 }); }
+    else if (act === "again") { buildQueue(); renderDrill(); window.scrollTo({ top: 0 }); }
+    else if (act === "goto-notes") show("notes");
+    else if (act === "save-line") { addLine(b.dataset.text, sid); flashSaved(b, "已收藏"); }
+    else if (act === "save-drill") { const v = $("#drill-input").value.trim(); if (v && addNote("【練習】" + (s ? s.drill : "") + "\n→ " + v, sid)) flashSaved(b, "已存"); }
+    else if (act === "save-take") { if (addNote($("#take-input").value, sid)) { $("#take-input").value = ""; flashSaved(b, "已存"); } }
+    else if (act === "coach-fw" && s) coach(s, $(".reveal", card).dataset.fw, "學員要回覆對方最後一則訊息（或傳開場白）。", $("#coach-fw-out"), b);
+    else if (act === "coach-drill" && s) { const v = $("#drill-input").value.trim(); if (v) coach(s, v, "變形練習：" + s.drill, $("#coach-drill-out"), b); }
+  });
+  $$(".seg button").forEach((b) => b.addEventListener("click", () => {
+    state.mode = b.dataset.mode;
+    $$(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    buildQueue(); renderDrill();
+  }));
+  $("#stage-filter").innerHTML = '<option value="all">全部階段</option>' + D.STAGES.map((s) => '<option value="' + s.id + '">' + s.id + " " + s.name + "</option>").join("");
+  $("#stage-filter").addEventListener("change", (e) => { state.filter = e.target.value; buildQueue(); renderDrill(); });
+  $("#gen-btn").addEventListener("click", (e) => genScenario(e.currentTarget));
+
+  /* ───────── navigator ───────── */
+  let navStage = 2;
+  function renderNav() {
+    $("#dial").innerHTML = D.STAGES.map((s, i) => '<button type="button" data-i="' + i + '" aria-pressed="' + (i === navStage) + '"><b>' + s.id + "</b><span>" + s.name + "</span></button>").join("");
+    $("#needle").style.setProperty("--i", navStage);
+    const s = D.STAGES[navStage];
+    const li = (a) => "<ul>" + a.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>";
+    $("#stage-detail").innerHTML =
+      '<p class="sd-goal">' + esc(s.goal) + "</p>" +
+      '<div class="sd-grid"><div><h4 class="lbl">你在這裡，如果</h4>' + li(s.signs) + '</div><div><h4 class="lbl">該往哪推</h4>' + li(s.moves) + '</div><div><h4 class="lbl">這時候別做</h4>' + li(s.avoid) + "</div></div>" +
+      '<p class="sd-exit"><b>進下一關的訊號：</b>' + esc(s.exit) + "</p>" +
+      '<div class="tags">' + s.tech.map((t) => '<button type="button" class="chip link" data-tech="' + t + '">' + esc(tagName(t)) + "</button>").join("") + "</div>";
+  }
+  $("#dial").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; navStage = +b.dataset.i; renderNav(); });
+  $("#stage-detail").addEventListener("click", (e) => { const b = e.target.closest("[data-tech]"); if (b) gotoTech(b.dataset.tech); });
+
+  $("#signals").innerHTML = D.SIGNALS.map((g, k) => '<label for="sig-' + k + '"><input type="checkbox" id="sig-' + k + '" data-w="' + g.w + '"><span>' + esc(g.t) + '</span><span class="w">' + (g.w > 0 ? "+" : "") + g.w + "</span></label>").join("");
+  function renderMeter() {
+    const checked = $$("#signals input:checked");
+    const score = checked.reduce((a, el) => a + Number(el.dataset.w), 0);
+    const maxPos = D.SIGNALS.filter((g) => g.w > 0).reduce((a, g) => a + g.w, 0);
+    const minNeg = D.SIGNALS.filter((g) => g.w < 0).reduce((a, g) => a + g.w, 0);
+    const pct = Math.round(((score - minNeg) / (maxPos - minNeg)) * 100);
+    let level, color, advice;
+    if (!checked.length) { level = "還沒勾選"; color = "var(--line)"; advice = "勾選你看到的訊號，這裡會告訴你該加速還是踩煞車。"; }
+    else if (score >= 6) { level = "高"; color = "var(--s3)"; advice = "她很投入。可以升溫、用假設性未來，或直接邀約。不要再停在問問題。"; }
+    else if (score >= 2) { level = "中"; color = "var(--s2)"; advice = "有興趣但還在觀望。繼續製造好玩跟張力（S2），或往連結走（S3）。先不要急著約。"; }
+    else { level = "低"; color = "var(--s0)"; advice = "她現在投入很少。回得更短更輕、換一個情緒頻道的話題，或放一兩天，不要連續追。"; }
+    $("#meter").innerHTML = '<div class="meter-head"><b>投入度：' + level + '</b><span class="mono">' + (checked.length ? (score > 0 ? "+" : "") + score : "—") + "</span></div>" +
+      '<div class="meter-track"><div class="meter-fill" style="width:' + (checked.length ? Math.max(4, pct) : 0) + "%;background:" + color + '"></div></div><p style="font-size:14px">' + advice + "</p>";
+  }
+  $("#signals").addEventListener("change", renderMeter);
+
+  $("#nav-img").addEventListener("change", (e) => {
+    const n = e.target.files.length, max = sampleLimits && sampleLimits.images ? sampleLimits.images.maxCount : 0;
+    $("#nav-img-info").textContent = n ? "已選 " + n + " 張" + (max && n > max ? "，只會送出前 " + max + " 張" : "") : "";
+  });
+  $("#nav-go").addEventListener("click", (e) => {
+    const btn = e.currentTarget, out = $("#nav-out");
+    const text = $("#nav-text").value.trim(), ctx = $("#nav-ctx").value.trim();
+    const files = Array.from($("#nav-img").files || []);
+    const max = sampleLimits && sampleLimits.images ? sampleLimits.images.maxCount : 0;
+    const imgs = max ? files.slice(0, max) : [];
+    if (!text && !imgs.length) { out.hidden = false; out.innerHTML = '<p class="err">先貼上對話或選一張截圖。</p>'; return; }
+    const prompt = COACH_FRAME + "\n\n你現在是學員的即時導航。" +
+      (imgs.length ? "\n附上的是交友軟體聊天截圖：右邊（通常顏色較深或較鮮豔）的氣泡是學員，左邊是對方。如果看不出來，在 stageWhy 裡說明你的假設。" : "") +
+      (ctx ? "\n背景：" + ctx : "") + (text ? "\n對話：\n" + text : "") +
+      "\n\n請判斷：現在在哪個階段、她的投入度與訊號、她最後一則的潛台詞，給三個方向（每個附一則可以直接傳的訊息），現在最不該做的事，以及一句心法。" +
+      '\n只回覆一個 JSON 物件：{"stage":"S0到S5","stageName":"階段名","stageWhy":"一兩句","investment":"高|中|低","signals":["你看到的訊號"],"subtext":"潛台詞","directions":[{"label":"方向名稱","technique":"技巧","line":"可以直接傳的訊息","why":"為什麼"}],"avoid":"現在最不該做的事","principle":"一句心法"}';
+    const opts = { modelTier: "default" };
+    if (imgs.length) opts.images = imgs;
+    runAI(out, btn, prompt, opts, (d) => {
+      const dirs = Array.isArray(d.directions) ? d.directions.slice(0, 4) : [];
+      out.innerHTML =
+        '<div class="opt-top"><span class="chip stage">' + esc(d.stage) + " " + esc(d.stageName) + '</span><span class="chip">投入度：' + esc(d.investment) + "</span></div>" +
+        (d.stageWhy ? "<p>" + esc(d.stageWhy) + "</p>" : "") +
+        (Array.isArray(d.signals) && d.signals.length ? '<div class="tags">' + d.signals.slice(0, 6).map((x) => '<span class="chip">' + esc(x) + "</span>").join("") + "</div>" : "") +
+        (d.subtext ? '<section class="rv"><h4>她的潛台詞 <span class="mono">SUBTEXT</span></h4><p>' + esc(d.subtext) + "</p></section>" : "") +
+        '<section class="rv"><h4>三個方向 <span class="mono">MOVES</span></h4>' + dirs.map((x) =>
+          '<div class="dir"><div class="dir-head">' + esc(x.label) + (x.technique ? '<span class="chip">' + esc(x.technique) + "</span>" : "") + '</div><p class="pro-line">' + esc(x.line) + '</p><p class="muted">' + esc(x.why) + '</p><div class="row"><button type="button" class="btn small" data-act="copy" data-text="' + esc(x.line) + '">複製</button><button type="button" class="btn small" data-act="save-line" data-text="' + esc(x.line) + '">收藏</button></div></div>').join("") + "</section>" +
+        (d.avoid ? '<section class="rv"><h4>現在別做 <span class="mono">AVOID</span></h4><p>' + esc(d.avoid) + "</p></section>" : "") +
+        (d.principle ? '<section class="rv"><h4>心法 <span class="mono">CORE</span></h4><p class="core-line">' + esc(d.principle) + "</p></section>" : "");
+    });
+  });
+  $("#nav-out").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    if (b.dataset.act === "save-line") { addLine(b.dataset.text, ""); flashSaved(b, "已收藏"); }
+    if (b.dataset.act === "copy") copyText(b.dataset.text, b);
+  });
+  function copyText(text, btn) {
+    const done = (ok) => flashSaved(btn, ok ? "已複製" : "請長按文字複製");
+    try { navigator.clipboard.writeText(text).then(() => done(true), () => done(false)); } catch (e) { done(false); }
+  }
+  $("#app-prompt").textContent = APP_PROMPT;
+  $("#copy-prompt").addEventListener("click", (e) => {
+    const btn = e.currentTarget, msg = $("#copy-prompt-msg");
+    const ok = () => { msg.textContent = "已複製"; setTimeout(() => { msg.textContent = ""; }, 2000); };
+    const fail = () => { msg.textContent = "請長按上面的文字複製"; const r = document.createRange(); r.selectNodeContents($("#app-prompt")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); };
+    try { navigator.clipboard.writeText(APP_PROMPT).then(ok, fail); } catch (err) { fail(); }
+  });
+
+  /* ───────── theory ───────── */
+  function renderTheory() {
+    $("#principles").innerHTML = D.PRINCIPLES.map((p, i) => '<div class="pr"><h3><span class="mono">' + String(i + 1).padStart(2, "0") + "</span>" + esc(p.title) + "</h3><p>" + esc(p.body) + "</p></div>").join("");
+    $("#techniques").innerHTML = D.TECHNIQUES.map((t) => '<details class="tech" id="tech-' + t.id + '"><summary>' + esc(tagName(t.id)) + '<span class="mono">' + esc(t.stage) + "</span></summary>" +
+      '<div class="tech-body"><p class="formula">' + esc(t.formula) + "</p><p>" + esc(t.why) + "</p><ul>" + t.ex.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul></div></details>").join("");
+    $("#antis").innerHTML = D.ANTIPATTERNS.map((a) => '<div class="anti-item"><b>' + esc(tagName(a.id)) + "</b><span>" + esc(a.why) + "</span></div>").join("");
+  }
+  function gotoTech(id) {
+    show("theory");
+    const el = $("#tech-" + id);
+    if (!el) return;
+    el.open = true;
+    el.classList.remove("flash"); void el.offsetWidth; el.classList.add("flash");
+    el.scrollIntoView({ block: "center" });
+  }
+
+  /* ───────── notes ───────── */
+  function renderNotes() {
+    const ans = Object.values(store.answers);
+    const n = ans.length;
+    const avg = n ? ans.reduce((a, b) => a + b.score, 0) / n : 0;
+    const pro = n ? Math.round((ans.filter((a) => a.score === 3).length / n) * 100) : 0;
+    const per = D.STAGES.map((s) => { const xs = ans.filter((a) => a.stage === s.id); return { s, n: xs.length, avg: xs.length ? xs.reduce((a, b) => a + b.score, 0) / xs.length : 0 }; });
+    const count = (pairs) => { const m = {}; pairs.forEach((t) => { m[t] = (m[t] || 0) + 1; }); return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 5); };
+    const weak = count(ans.filter((a) => a.score < 3).flatMap((a) => a.best || []));
+    const traps = count(ans.flatMap((a) => (a.picked || []).filter(isAnti)));
+    $("#stats").innerHTML = !n ? '<p class="empty">還沒有紀錄。去「暖身」做五題，這裡會顯示你的強項跟弱項。</p>' :
+      '<div class="stat-top"><div><b>' + n + "</b><span>練過的題目</span></div><div><b>" + avg.toFixed(1) + "</b><span>平均分（滿分 3）</span></div><div><b>" + pro + "%</b><span>選到高手答案</span></div></div>" +
+      '<div class="bars">' + per.map((p) => '<div class="bar-row"><span>' + p.s.id + " " + p.s.name + '</span><div class="track"><div class="fill" style="width:' + (p.avg / 3) * 100 + '%"></div></div><span class="v">' + (p.n ? p.avg.toFixed(1) + " · " + p.n + " 題" : "—") + "</span></div>").join("") + "</div>" +
+      (weak.length ? '<section class="rv"><h4>要多練的技巧</h4><div class="tags">' + weak.map(([t, c]) => '<button type="button" class="chip link" data-tech="' + t + '">' + esc(tagName(t)) + " ×" + c + "</button>").join("") + "</div></section>" : "") +
+      (traps.length ? '<section class="rv"><h4>你容易掉的坑</h4><div class="tags">' + traps.map(([t, c]) => '<span class="chip anti">' + esc(tagName(t)) + " ×" + c + "</span>").join("") + "</div></section>" : "");
+    const title = (sid) => { const s = sid && byId(sid); return s ? s.title : ""; };
+    $("#notes-list").innerHTML = store.notes.length ? store.notes.map((x) => '<div class="item"><p class="txt">' + esc(x.text) + '</p><div class="meta"><span>' + fmtDate(x.at) + (title(x.sid) ? "・" + esc(title(x.sid)) : "") + '</span><button type="button" class="btn small ghost" data-del="' + esc(x.id) + '">刪除</button></div></div>').join("")
+      : '<p class="empty">還沒有筆記。每題做完寫一句歸納，久了就是你自己的心法。</p>';
+    $("#lines-list").innerHTML = store.lines.length ? store.lines.map((x) => '<div class="item"><p class="txt line">' + esc(x.text) + '</p><div class="meta"><span>' + fmtDate(x.at) + (title(x.sid) ? "・" + esc(title(x.sid)) : "") + '</span><span class="row"><button type="button" class="btn small" data-copy="' + esc(x.text) + '">複製</button><button type="button" class="btn small ghost" data-del="' + esc(x.id) + '">刪除</button></span></div></div>').join("")
+      : '<p class="empty">在題目的「高手示範」按收藏，句子會出現在這裡。</p>';
+  }
+  $("#stats").addEventListener("click", (e) => { const b = e.target.closest("[data-tech]"); if (b) gotoTech(b.dataset.tech); });
+  $("#v-notes").addEventListener("click", (e) => {
+    const del = e.target.closest("[data-del]"), cp = e.target.closest("[data-copy]");
+    if (cp) copyText(cp.dataset.copy, cp);
+    if (del) {
+      const id = del.dataset.del;
+      store.notes = store.notes.filter((x) => x.id !== id); store.lines = store.lines.filter((x) => x.id !== id);
+      dbDelete(id); renderNotes();
+    }
+  });
+  $("#note-add").addEventListener("click", () => {
+    if (addNote($("#note-input").value, "")) { $("#note-input").value = ""; $("#note-msg").textContent = "已存"; setTimeout(() => { $("#note-msg").textContent = ""; }, 2000); }
+  });
+  $("#reset-btn").addEventListener("click", () => { $("#reset-confirm").hidden = false; });
+  $("#reset-no").addEventListener("click", () => { $("#reset-confirm").hidden = true; });
+  $("#reset-yes").addEventListener("click", () => {
+    store.answers = {}; saveProgress(); $("#reset-confirm").hidden = true; renderNotes(); buildQueue();
+  });
+
+  /* ───────── routing ───────── */
+  const VIEWS = ["drill", "nav", "theory", "notes"];
+  function show(v, fromHash) {
+    if (!VIEWS.includes(v)) v = "drill";
+    state.view = v;
+    VIEWS.forEach((x) => { $("#v-" + x).hidden = x !== v; });
+    $$(".tab").forEach((t) => { if (t.dataset.view === v) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
+    if (v === "notes") renderNotes();
+    if (v === "drill" && !$("#drill-card").innerHTML) renderDrill();
+    if (!fromHash && location.hash !== "#" + v) history.replaceState(null, "", "#" + v);
+    window.scrollTo({ top: 0 });
+  }
+  $$(".tab").forEach((t) => t.addEventListener("click", () => show(t.dataset.view)));
+  window.addEventListener("hashchange", () => show(location.hash.slice(1), true));
+
+  /* ───────── boot ───────── */
+  function start(snap) {
+    lsLoad();
+    if (snap && Array.isArray(snap.queue)) Object.assign(state, { mode: snap.mode || "warm", filter: snap.filter || "all", queue: snap.queue, pos: snap.pos || 0, session: snap.session || [] });
+    $$(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x.dataset.mode === state.mode)));
+    $("#stage-filter").value = state.filter;
+    renderNav(); renderMeter(); renderTheory(); renderNotes();
+    show(location.hash.slice(1) || (snap && snap.view) || "drill", true);
+    renderDrill();
+    dbInit(); aiInit();
+  }
+  const hot = window.claude && window.claude.hot;
+  if (hot && hot.snapshot) hot.snapshot(() => ({ view: state.view, mode: state.mode, filter: state.filter, queue: state.queue, pos: state.pos, session: state.session }));
+  if (hot && hot.ready) hot.ready(start); else start((hot && hot.data) || {});
+})();
+</script>
