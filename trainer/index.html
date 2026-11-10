@@ -952,7 +952,7 @@ details.more[open] > summary::before{content:"－ "}
       '<div class="row"><button type="button" class="btn small ghost" data-act="rt-cancel">← 取消</button></div>' +
       '<article class="card">' +
         '<h2 class="scn-title">' + (d.id ? "編輯劇本" : "新增劇本") + "</h2>" +
-        field("f-title", "名稱", d.title, 0, "例如：訓練出來的男朋友") +
+        field("f-title", "名稱", d.title, 0, "例如：會撒嬌的類型") +
         '<div class="fw"><label class="lbl" for="f-stage">階段</label><select id="f-stage">' + D.STAGES.map((s) => '<option value="' + s.id + '"' + (s.id === d.stage ? " selected" : "") + ">" + s.id + " " + s.name + "</option>").join("") + "</select></div>" +
         field("f-when", "什麼時候用", d.when, 2, "例如：她會撒嬌、深夜還在聊的時候") +
         field("f-lead", "1 指引", d.lead.line, 2, "鋪陳的那一句") +
