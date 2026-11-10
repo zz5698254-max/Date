@@ -11,7 +11,7 @@ window.TUNE = (function () {
     qualify: "篩選", dig: "情緒深挖", disclose: "自我揭露", amplify: "同意並放大",
     flip: "翻轉框架", reward: "獎勵", invite: "邀約公式", revive: "冷場重啟",
     choice: "選擇題", selfdep: "自嘲", frame: "穩住框架", sincere: "真誠", care: "接住情緒",
-    curious: "好奇延伸", repair: "修復",
+    curious: "好奇延伸", repair: "修復", reverse: "角色反轉",
     // 誤區
     interview: "面試式提問", overinvest: "過度投入", explain: "辯解", approval: "求認同",
     steal: "搶話", lecture: "說教", neg: "打壓", guilt: "情緒勒索", jealousy: "製造競爭焦慮",
@@ -59,7 +59,7 @@ window.TUNE = (function () {
       moves: ["假設性未來：「如果我們一起…」", "接住撒嬌，再往前推一點", "在情緒高點由你結束對話"],
       avoid: ["被試探時辯解", "聊到沒話講才結束", "一下子跳到很重的告白"],
       exit: "她丟出「找不到人陪我…」這類球，或你們已經在聊見面的畫面，進入 S5。",
-      tech: ["future", "pushpull", "flip", "reward"],
+      tech: ["future", "pushpull", "reverse", "flip", "reward"],
     },
     {
       id: "S5", name: "邀約", goal: "換 LINE、約見面",
@@ -161,6 +161,10 @@ window.TUNE = (function () {
     { id: "invite", stage: "S5", formula: "承接話題 ＋ 一點玩笑 ＋ 兩個具體時間 ＋ 細節你負責",
       why: "她只要回一個字就成立，回覆成本最低。",
       ex: ["那我勉強犧牲一下陪你吃。週五晚上或週六中午，你挑一個，燒肉店我來找"] },
+    { id: "reverse", stage: "S4", formula: "把她的話當成她在追你、邀請你 → 假裝矜持或開條件",
+      why: "變成她在追你、你在考慮。她會想反駁，張力就出來了。只在她明顯有好感的時候用。",
+      ex: ["她：抱我 → 這麼直接？我們才聊幾天欸。好啦，但我睡相很差，你要先簽切結書",
+        "她：幹嘛問這個啦 → 你是在問我要不要抱你睡嗎？想太多，我很難約的"] },
     { id: "choice", stage: "S0–S2", formula: "「你是 A 還是 B？」＋ 先說你自己的立場",
       why: "回覆成本最低，又能看出她的個性。先表態，就不會像問卷。",
       ex: ["火鍋你是沙茶派還是蛋黃派？我先說，我是什麼都加的那種"] },
@@ -665,5 +669,44 @@ window.TUNE = (function () {
     },
   ];
 
-  return { TAGS, ANTI, STAGES, SIGNALS, PRINCIPLES, TECHNIQUES, ANTIPATTERNS, SCENARIOS };
+  // 劇本：指引 → 鉤子 → 逗。replies 的 step：lead＝指引之後她可能回，hook＝鉤子之後她可能回。
+  const ROUTINES = [
+    {
+      id: "r-trained-bf", title: "訓練出來的男朋友", stage: "S4",
+      when: "她已經會撒嬌、深夜還在聊、對你有明顯好感的時候。還在破冰或吸引階段先不要用。",
+      lead: { line: "我覺得你交過的男朋友，應該都是被你訓練出來的吧", why: "冷讀她在感情裡是主導的那一方，帶點調侃，也自然把話題帶到感情。" },
+      hook: { line: "那我問你，如果你想要男朋友抱著你睡，你會怎麼跟他說？", why: "假設題讓她在腦中想像親密畫面，而且得自己說出口。" },
+      tease: { rule: "不管她回什麼，都當成她在問你，然後假裝矜持、開條件。", why: "角色反轉：變成她在追你、你在考慮。她會想反駁，張力就出來了。" },
+      replies: [
+        { step: "lead", her: "哪有，我很好相處好嗎", me: "好相處的人都這樣說。好，我出一題測試你。" },
+        { step: "lead", her: "哈哈哈你怎麼知道", me: "看得出來。那我要問一個專業問題。" },
+        { step: "lead", her: "我沒交過幾個啦", me: "少而精，那一定訓練得更徹底。我問一題就知道。" },
+        { step: "hook", her: "抱我", me: "這麼直接？我們才聊幾天欸。好啦，但我睡相很差，你要先簽切結書。" },
+        { step: "hook", her: "我不會說，我會直接鑽進他懷裡", me: "直接鑽進來？你這樣很危險欸，我還沒答應喔。先排隊。" },
+        { step: "hook", her: "幹嘛問這個啦", me: "你是在問我要不要抱你睡嗎？想太多，我很難約的。" },
+        { step: "hook", her: "那你呢？你會怎麼說", me: "你現在是在跟我要台詞，好等一下用在我身上嗎？" },
+        { step: "hook", her: "我會撒嬌說好冷～", me: "好冷？這招太老了，對我沒用……大概只會有用三次。" },
+        { step: "hook", her: "你很色欸哈哈", me: "我只是問你怎麼說話，是你自己想到那裡去的。誰比較色？" },
+      ],
+      guard: "她變冷、只回「…」、或認真說你很色（沒有哈哈、沒有表情），就收回：「好啦開玩笑的，太快了」，然後換回輕鬆的話題。",
+    },
+    {
+      id: "r-interview", title: "面試反轉", stage: "S2",
+      when: "她問你很多問題，對話開始像在面試的時候。",
+      lead: { line: "你問這麼多，是在面試我嗎？", why: "點破框架，讓她意識到自己在評估你。" },
+      hook: { line: "好，那換我面試你。第一題：你的缺點是什麼？不准說太完美。", why: "把被評估的位置翻過來，用遊戲包裝，她會想玩。" },
+      tease: { rule: "不管她答什麼，都用面試官的口吻評分，偶爾加分、偶爾扣分。", why: "加分是拉，扣分是推，分數會讓她想表現。" },
+      replies: [
+        { step: "lead", her: "對啊，你要好好表現", me: "可以，但這是雙向面試，我也有權利問問題。" },
+        { step: "lead", her: "哪有，我只是好奇", me: "好奇也算面試的一種。好，換我。" },
+        { step: "hook", her: "我很懶", me: "懶，扣十分。但誠實加二十分，你目前還在名單上。" },
+        { step: "hook", her: "我沒什麼缺點", me: "自信過頭，扣五分。下一題。" },
+        { step: "hook", her: "你先說你的", me: "面試官不用回答問題，這是規定。" },
+        { step: "hook", her: "我太容易心軟", me: "心軟加分，但我要再觀察一下，這題先保留。" },
+      ],
+      guard: "玩兩三輪就收，不要真的變成一直評分她。她答得很認真的時候，就認真聽。",
+    },
+  ];
+
+  return { TAGS, ANTI, STAGES, SIGNALS, PRINCIPLES, TECHNIQUES, ANTIPATTERNS, SCENARIOS, ROUTINES };
 })();

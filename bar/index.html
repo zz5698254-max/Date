@@ -515,6 +515,13 @@ details.card[open] > summary::after{content:"－"}
     } else if (s.id === "interest") {
       h += '<div class="sig-cols"><div class="sig-good"><h4>有興趣</h4><ul>' + D.SIGNALS.good.map((x) => "<li>" + esc(x) + "</li>").join("") + '</ul></div><div class="sig-bad"><h4>沒興趣</h4><ul>' + D.SIGNALS.bad.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul></div></div>" +
         '<div class="pick-grid"><button type="button" class="pk" data-state="flow" aria-pressed="false"><b>看起來有興趣</b><span>繼續聊、找機會要聯絡</span></button><button type="button" class="pk" data-state="exit" aria-pressed="false"><b>看起來沒興趣</b><span>笑著退場</span></button></div>';
+    } else if (s.id === "heat") {
+      h += D.ROUTINES.map((r) =>
+        '<div class="rv"><h4>' + esc(r.title) + ' <span class="mono">ROUTINE</span></h4><p class="hint">' + esc(r.when) + "</p></div>" +
+        [["1 指引", r.lead.line, r.lead.why], ["2 鉤子", r.hook.line, r.hook.why], ["3 逗", r.tease.rule, r.tease.why]].map((x) =>
+          '<div class="cue"><span class="mono" style="color:var(--accent)">' + x[0] + '</span><p class="say">' + esc(x[1]) + '</p><span class="hint">' + esc(x[2]) + "</span></div>").join("") +
+        '<div class="rv"><h4>她回 → 你逗</h4><ul class="lines">' + r.replies.map((x) => '<li><span class="hint">她：' + esc(x.her) + "</span><br>" + esc(x.me) + "</li>").join("") + "</ul></div>" +
+        '<p class="tip"><b>收回　</b>' + esc(r.guard) + "</p>").join("");
     } else {
       h += cueHTML(s.lines, pocket.idx);
       if (s.id === "stuck") {

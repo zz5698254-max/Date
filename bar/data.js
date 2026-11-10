@@ -69,6 +69,12 @@ window.BAR = (function () {
       tip: "她開始反問你、身體轉向你，就可以從玩笑轉到深一點的話題。記得也分享你自己。",
     },
     {
+      id: "heat", name: "升溫", sub: "她明顯有興趣",
+      goal: "加一點曖昧，讓她想像跟你在一起。",
+      lines: [],
+      tip: "一晚用一次就好。逗完她笑了，就回到正常聊天，或趁高點要聯絡方式，不要一直往上加。",
+    },
+    {
       id: "stuck", name: "卡住了", sub: "腦袋空白",
       goal: "抓一條線，讓對話繼續。",
       lines: [
@@ -423,5 +429,25 @@ window.BAR = (function () {
     },
   ];
 
-  return { TAGS, ANTI, DRILL_STAGES, MINDSET, LADDER, STATES, SCENES, THREADS, SIGNALS, TOPICS, DRILLS };
+  // 升溫劇本（當面版）：指引 → 鉤子 → 逗。在訓練台新增的劇本不會出現在這裡，要放進來得改這個檔案。
+  const ROUTINES = [
+    {
+      id: "r-trained-bf", title: "訓練出來的男朋友",
+      when: "聊開了，她會笑、會反問、身體轉向你的時候。",
+      lead: { line: "我覺得你交過的男朋友，應該都是被你訓練出來的吧。", why: "冷讀她在感情裡是主導的那一方，順便把話題帶到感情。" },
+      hook: { line: "那我問你，如果你想要男朋友抱著你睡，你會怎麼跟他說？", why: "讓她想像親密畫面，而且得自己說出口。" },
+      tease: { rule: "她回什麼，都當成她在問你，然後假裝矜持、開條件。", why: "變成她在追你、你在考慮，張力就出來了。" },
+      replies: [
+        { step: "lead", her: "哪有，我很好相處", me: "好相處的人都這樣說。好，我出一題考你。" },
+        { step: "lead", her: "你怎麼知道", me: "看得出來。那我要問一個專業問題。" },
+        { step: "hook", her: "抱我", me: "這麼直接？我們才認識半小時欸，先請我喝一杯再說。" },
+        { step: "hook", her: "幹嘛問這個啦", me: "你是在問我要不要抱你睡嗎？我很難約的，先排隊。" },
+        { step: "hook", her: "那你呢？", me: "你現在是在跟我要台詞，好等一下用在我身上嗎？" },
+        { step: "hook", her: "你很色欸（笑著說）", me: "我只是問你怎麼說話，是你自己想到那裡去的。" },
+      ],
+      guard: "她不笑、往後退、或認真說你很色，就收回：「好啦開玩笑的，太快了」，然後換回輕鬆的話題。",
+    },
+  ];
+
+  return { TAGS, ANTI, DRILL_STAGES, MINDSET, LADDER, STATES, SCENES, THREADS, SIGNALS, TOPICS, DRILLS, ROUTINES };
 })();

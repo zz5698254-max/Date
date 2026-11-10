@@ -230,12 +230,37 @@ details.card[open] > summary::after{content:"－"}
 
 /* tabs */
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom, 0px);padding-left:max(8px, env(safe-area-inset-left, 0px));padding-right:max(8px, env(safe-area-inset-right, 0px))}
-.tabs-in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.tabs-in{max-width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(5,minmax(0,1fr))}
 .tab{appearance:none;border:0;background:none;cursor:pointer;padding:9px 4px 11px;display:flex;flex-direction:column;align-items:center;gap:0;color:var(--muted)}
 .tab span{font-size:15px;font-weight:500}
 .tab .mono{font-size:10px}
 .tab[aria-current="page"]{color:var(--accent)}
 .tab[aria-current="page"] .mono{color:var(--accent)}
+
+/* routines */
+.rt-item{appearance:none;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;padding:12px 0;display:flex;flex-direction:column;gap:4px;cursor:pointer;width:100%}
+.rt-item:last-child{border-bottom:0}
+.rt-item b{font-family:var(--font-display);font-size:19px;line-height:1.35}
+.rt-item .muted{font-size:13px}
+.rt-top{display:flex;gap:6px;flex-wrap:wrap}
+.steps{display:flex;flex-direction:column}
+.step{display:flex;flex-direction:column;gap:2px;padding:12px 0;border-bottom:1px dashed var(--line)}
+.step:last-child{border-bottom:0}
+.step-k{font-family:var(--font-mono);font-size:12px;font-weight:500;letter-spacing:.06em;color:var(--accent)}
+.step .muted{font-size:13px}
+.pair{display:flex;flex-direction:column;gap:6px;padding:6px 0}
+.pair .thread{padding:10px}
+.pair-act{display:flex;justify-content:flex-end}
+.guard{font-size:14px;background:var(--s0-soft);border-radius:10px;padding:10px 12px}
+.guard b{color:var(--s0)}
+.rrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:start;padding:10px 0;border-bottom:1px dashed var(--line)}
+.r-fields{display:flex;flex-direction:column;gap:6px;min-width:0}
+.r-fields select{align-self:flex-start}
+#f-stage{align-self:flex-start}
+details.more > summary{cursor:pointer;font-size:14px;color:var(--muted);list-style:none}
+details.more > summary::-webkit-details-marker{display:none}
+details.more > summary::before{content:"＋ "}
+details.more[open] > summary::before{content:"－ "}
 
 :root:not(.ai-on) .ai-only{display:none !important}
 :root.ai-on .no-ai{display:none !important}
@@ -322,6 +347,12 @@ details.card[open] > summary::after{content:"－"}
       </details>
     </section>
 
+    <!-- 劇本 -->
+    <section class="view" id="v-routines" aria-label="劇本" hidden>
+      <h2 class="view-title">劇本庫 <span class="mono">ROUTINES</span></h2>
+      <div id="rt-box" style="display:flex;flex-direction:column;gap:14px"></div>
+    </section>
+
     <!-- 心法 -->
     <section class="view" id="v-theory" aria-label="心法" hidden>
       <h2 class="view-title">心法 <span class="mono">INNER GAME</span></h2>
@@ -364,6 +395,7 @@ details.card[open] > summary::after{content:"－"}
   <div class="tabs-in">
     <button type="button" class="tab" data-view="drill"><span>暖身</span><b class="mono">DRILL</b></button>
     <button type="button" class="tab" data-view="nav"><span>導航</span><b class="mono">NAV</b></button>
+    <button type="button" class="tab" data-view="routines"><span>劇本</span><b class="mono">ROUTINE</b></button>
     <button type="button" class="tab" data-view="theory"><span>心法</span><b class="mono">CORE</b></button>
     <button type="button" class="tab" data-view="notes"><span>筆記</span><b class="mono">LOG</b></button>
   </div>
@@ -414,17 +446,17 @@ details.card[open] > summary::after{content:"－"}
 
   /* ───────── store ───────── */
   const LS_KEY = "tunein.v1";
-  const store = { answers: {}, notes: [], lines: [], gen: [], col: null };
+  const store = { answers: {}, notes: [], lines: [], gen: [], routines: [], col: null };
   function lsLoad() {
     try {
       const raw = localStorage.getItem(LS_KEY);
       if (!raw) return;
       const d = JSON.parse(raw);
-      store.answers = d.answers || {}; store.notes = d.notes || []; store.lines = d.lines || []; store.gen = d.gen || [];
+      store.answers = d.answers || {}; store.notes = d.notes || []; store.lines = d.lines || []; store.gen = d.gen || []; store.routines = d.routines || [];
     } catch (e) { /* ignore */ }
   }
   function lsSave() {
-    try { localStorage.setItem(LS_KEY, JSON.stringify({ answers: store.answers, notes: store.notes, lines: store.lines, gen: store.gen })); } catch (e) { /* ignore */ }
+    try { localStorage.setItem(LS_KEY, JSON.stringify({ answers: store.answers, notes: store.notes, lines: store.lines, gen: store.gen, routines: store.routines })); } catch (e) { /* ignore */ }
   }
   function setSync(s) {
     const el = $("#sync"); el.dataset.s = s;
@@ -457,21 +489,25 @@ details.card[open] > summary::after{content:"－"}
         for (const n of store.notes) await dbWrite(n.id, { kind: "note", text: n.text, sid: n.sid || "", at: n.at });
         for (const l of store.lines) await dbWrite(l.id, { kind: "line", text: l.text, sid: l.sid || "", at: l.at });
         for (const g of store.gen) await dbWrite(g.id, { kind: "gen", scenario: g.scenario, at: g.at });
+        for (const r of store.routines) await dbWrite(r.id, { kind: "routine", routine: r, at: r.at || Date.now() });
       } else {
-        const answers = {}, notes = [], lines = [], gen = [];
+        const answers = {}, notes = [], lines = [], gen = [], routines = [];
         snap.docs.forEach((doc) => {
           const d = doc.data() || {};
           if (doc.id === "progress") Object.assign(answers, d.answers || {});
           else if (d.kind === "note") notes.push({ id: doc.id, text: d.text, sid: d.sid, at: d.at });
           else if (d.kind === "line") lines.push({ id: doc.id, text: d.text, sid: d.sid, at: d.at });
           else if (d.kind === "gen" && d.scenario) gen.push({ id: doc.id, scenario: d.scenario, at: d.at });
+          else if (d.kind === "routine" && d.routine) routines.push(Object.assign({}, d.routine, { id: doc.id }));
         });
         const by = (a, b) => (b.at || 0) - (a.at || 0);
         store.answers = answers; store.notes = notes.sort(by); store.lines = lines.sort(by); store.gen = gen.sort((a, b) => (a.at || 0) - (b.at || 0));
+        store.routines = routines.sort((a, b) => (a.at || 0) - (b.at || 0));
         lsSave();
       }
       setSync("ok");
       renderNotes();
+      if (state.view === "routines" && !rt.edit) renderRoutines();
       if (state.view === "drill" && !$("#drill-card").dataset.sid) renderDrill();
     } catch (e) {
       setSync(store.col ? "err" : "local");
@@ -833,6 +869,209 @@ details.card[open] > summary::after{content:"－"}
     try { navigator.clipboard.writeText(APP_PROMPT).then(ok, fail); } catch (err) { fail(); }
   });
 
+  /* ───────── routines（劇本庫：指引 → 鉤子 → 逗） ───────── */
+  const arr = (v) => (Array.isArray(v) ? v : []);
+  const txt = (v) => (v == null ? "" : String(v));
+  const rt = { open: null, edit: null, prac: { rid: null, idx: 0 }, pending: null, confirmDel: false };
+  const allRoutines = () => D.ROUTINES.map((r) => Object.assign({ builtin: true }, r)).concat(store.routines);
+  const routineById = (id) => allRoutines().find((r) => r.id === id);
+  const blankRoutine = () => ({ id: null, title: "", stage: "S4", when: "", lead: { line: "", why: "" }, hook: { line: "", why: "" }, tease: { rule: "", why: "" }, replies: [], guard: "" });
+  const cloneRoutine = (r) => JSON.parse(JSON.stringify({ id: r.id, title: r.title, stage: r.stage, when: r.when || "", lead: r.lead, hook: r.hook, tease: r.tease, replies: r.replies || [], guard: r.guard || "", at: r.at }));
+  const stageLabel = (id) => id + " " + ((STAGE[id] || {}).name || "");
+  function saveRoutine(r) {
+    r.at = r.at || Date.now();
+    const i = store.routines.findIndex((x) => x.id === r.id);
+    if (i >= 0) store.routines[i] = r; else store.routines.push(r);
+    dbWrite(r.id, { kind: "routine", routine: r, at: r.at });
+  }
+  function copyAsMine(r) {
+    const c = cloneRoutine(r);
+    c.id = "r_" + Date.now(); c.at = Date.now(); c.title = r.title + "（我的版本）";
+    return c;
+  }
+  function routineText(r) {
+    return "劇本「" + r.title + "」（階段 " + r.stage + "）\n使用時機：" + r.when + "\n指引：" + r.lead.line + "\n鉤子：" + r.hook.line + "\n逗的做法：" + r.tease.rule;
+  }
+  function pairHTML(her, me) {
+    return '<div class="pair"><div class="thread"><div class="b her">' + esc(her) + '</div><div class="b me">' + esc(me) + "</div></div>" +
+      '<div class="pair-act"><button type="button" class="btn small" data-act="save-line" data-text="' + esc(me) + '">收藏</button></div></div>';
+  }
+  function stepHTML(k, line, why, cls) {
+    return '<div class="step"><span class="step-k">' + k + '</span><p class="' + cls + '">' + esc(line) + "</p>" + (why ? '<p class="muted">' + esc(why) + "</p>" : "") + "</div>";
+  }
+  function renderRoutines() {
+    const box = $("#rt-box");
+    if (rt.edit) return renderRoutineForm(box);
+    const r = rt.open && routineById(rt.open);
+    if (r) return renderRoutine(box, r);
+    rt.open = null;
+    box.innerHTML =
+      '<div class="toolbar"><p class="muted" style="font-size:14px">指引 → 鉤子 → 逗。點開看回法、練習，或用 AI 推演。</p><button type="button" class="btn primary" data-act="rt-new">新增劇本</button></div>' +
+      '<div class="card" style="gap:0;padding-block:4px">' + allRoutines().map((x) =>
+        '<button type="button" class="rt-item" data-act="rt-open" data-id="' + esc(x.id) + '"><span class="rt-top"><span class="chip stage">' + esc(stageLabel(x.stage)) + '</span><span class="chip">' + (x.builtin ? "內建" : "我的") + "</span></span>" +
+        "<b>" + esc(x.title) + '</b><span class="muted">' + esc(x.when) + "</span></button>").join("") + "</div>";
+  }
+  function renderRoutine(box, r) {
+    const grp = (step, title) => { const xs = r.replies.filter((x) => x.step === step); return xs.length ? '<section class="rv"><h4>' + title + "</h4>" + xs.map((x) => pairHTML(x.her, x.me)).join("") + "</section>" : ""; };
+    box.innerHTML =
+      '<div class="row"><button type="button" class="btn small ghost" data-act="rt-back">← 劇本列表</button></div>' +
+      '<article class="card">' +
+        '<div class="scn-head"><span class="chip stage">' + esc(stageLabel(r.stage)) + '</span><span class="chip">' + (r.builtin ? "內建" : "我的") + "</span></div>" +
+        '<h2 class="scn-title">' + esc(r.title) + "</h2>" +
+        (r.when ? '<p class="ctx"><b>什麼時候用：</b>' + esc(r.when) + "</p>" : "") +
+        '<div class="steps">' + stepHTML("1 指引", r.lead.line, r.lead.why, "pro-line") + stepHTML("2 鉤子", r.hook.line, r.hook.why, "pro-line") + stepHTML("3 逗", r.tease.rule, r.tease.why, "core-line") + "</div>" +
+        grp("lead", "指引之後，她可能回") + grp("hook", "鉤子之後，她可能回 → 你這樣逗") +
+        (r.guard ? '<p class="guard"><b>收回　</b>' + esc(r.guard) + "</p>" : "") +
+        '<div class="row"><button type="button" class="btn small ai-only" data-act="rt-expand">AI 推演更多回覆</button>' +
+          (r.builtin ? '<button type="button" class="btn small" data-act="rt-copy">複製成我的版本</button>'
+            : '<button type="button" class="btn small" data-act="rt-edit">編輯</button><button type="button" class="btn small ghost" data-act="rt-del">刪除</button>') + "</div>" +
+        (rt.confirmDel ? '<div class="confirm"><span>確定刪除「' + esc(r.title) + '」嗎？刪除後無法復原。</span><div class="row"><button type="button" class="btn small" data-act="rt-del-yes">刪除</button><button type="button" class="btn small ghost" data-act="rt-del-no">取消</button></div></div>' : "") +
+        '<div class="ai-out" id="rt-ai-out" hidden></div>' +
+      "</article>" +
+      '<h2 class="view-title">實戰練習 <span class="mono">PRACTICE</span></h2>' +
+      '<article class="card" id="rt-practice">' + practiceHTML(r) + "</article>";
+  }
+  function practicePool(r) { const h = r.replies.filter((x) => x.step === "hook"); return h.length ? h : r.replies; }
+  function practiceHTML(r) {
+    const pool = practicePool(r);
+    if (!pool.length) return '<p class="empty">這個劇本還沒有「她可能回」。先編輯加幾組，或用 AI 推演。</p>';
+    if (rt.prac.rid !== r.id) { rt.prac.rid = r.id; rt.prac.idx = Math.floor(Math.random() * pool.length); }
+    const x = pool[rt.prac.idx % pool.length];
+    return '<p class="muted" style="font-size:14px">逗的做法：' + esc(r.tease.rule) + "</p>" +
+      '<div class="thread"><div class="b me">' + esc(x.step === "lead" ? r.lead.line : r.hook.line) + '</div><div class="b her">' + esc(x.her) + "</div></div>" +
+      '<label class="lbl" for="rt-try">你怎麼逗她？</label><textarea id="rt-try" rows="2" placeholder="先自己寫，再看參考"></textarea>' +
+      '<div class="row"><button type="button" class="btn small" data-act="rt-ref">看參考回法</button><button type="button" class="btn small ai-only" data-act="rt-coach">AI 評分</button><button type="button" class="btn small primary" data-act="rt-next">下一個</button></div>' +
+      '<div class="ai-out" id="rt-ref-out" hidden></div><div class="ai-out" id="rt-coach-out" hidden></div>';
+  }
+  function renderRoutineForm(box) {
+    const d = rt.edit;
+    const field = (id, label, val, rows, ph) => '<div class="fw"><label class="lbl" for="' + id + '">' + label + "</label>" +
+      (rows ? '<textarea id="' + id + '" rows="' + rows + '" placeholder="' + esc(ph || "") + '">' + esc(val) + "</textarea>"
+        : '<input type="text" id="' + id + '" value="' + esc(val) + '" placeholder="' + esc(ph || "") + '">') + "</div>";
+    box.innerHTML =
+      '<div class="row"><button type="button" class="btn small ghost" data-act="rt-cancel">← 取消</button></div>' +
+      '<article class="card">' +
+        '<h2 class="scn-title">' + (d.id ? "編輯劇本" : "新增劇本") + "</h2>" +
+        field("f-title", "名稱", d.title, 0, "例如：訓練出來的男朋友") +
+        '<div class="fw"><label class="lbl" for="f-stage">階段</label><select id="f-stage">' + D.STAGES.map((s) => '<option value="' + s.id + '"' + (s.id === d.stage ? " selected" : "") + ">" + s.id + " " + s.name + "</option>").join("") + "</select></div>" +
+        field("f-when", "什麼時候用", d.when, 2, "例如：她會撒嬌、深夜還在聊的時候") +
+        field("f-lead", "1 指引", d.lead.line, 2, "鋪陳的那一句") +
+        field("f-hook", "2 鉤子", d.hook.line, 2, "讓她不得不回的那一句") +
+        field("f-tease", "3 逗的做法", d.tease.rule, 2, "例如：不管她回什麼，都當成她在問你") +
+        '<details class="more"><summary>為什麼有效（選填，AI 可以幫你補）</summary><div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">' +
+          field("f-lead-why", "指引為什麼有效", d.lead.why, 2) + field("f-hook-why", "鉤子為什麼有效", d.hook.why, 2) + field("f-tease-why", "逗為什麼有效", d.tease.why, 2) +
+        "</div></details>" +
+        '<section class="rv"><h4>她可能回 → 你怎麼逗</h4>' + d.replies.map((x, i) =>
+          '<div class="rrow"><div class="r-fields">' +
+            '<label class="sr" for="r-step-' + i + '">時機</label><select class="r-step" id="r-step-' + i + '"><option value="hook"' + (x.step !== "lead" ? " selected" : "") + '>鉤子之後</option><option value="lead"' + (x.step === "lead" ? " selected" : "") + ">指引之後</option></select>" +
+            '<label class="sr" for="r-her-' + i + '">她回</label><input type="text" class="r-her" id="r-her-' + i + '" value="' + esc(x.her) + '" placeholder="她：">' +
+            '<label class="sr" for="r-me-' + i + '">你逗</label><input type="text" class="r-me" id="r-me-' + i + '" value="' + esc(x.me) + '" placeholder="你：">' +
+          '</div><button type="button" class="btn small ghost" data-act="rt-row-del" data-k="' + i + '">刪除</button></div>').join("") +
+          '<div class="row"><button type="button" class="btn small" data-act="rt-row-add">加一組</button></div></section>' +
+        field("f-guard", "收回的方法", d.guard, 2, "她不舒服的時候怎麼收") +
+        '<p class="err" id="rt-form-err" hidden></p>' +
+        '<div class="row"><button type="button" class="btn ai-only" data-act="rt-fill">AI 幫我補完</button><button type="button" class="btn primary" data-act="rt-save">儲存</button></div>' +
+        '<div class="ai-out" id="rt-form-out" hidden></div>' +
+      "</article>";
+  }
+  function syncDraft() {
+    const d = rt.edit; if (!d || !$("#f-title")) return;
+    const v = (id) => $("#" + id).value.trim();
+    d.title = v("f-title"); d.stage = $("#f-stage").value; d.when = v("f-when");
+    d.lead.line = v("f-lead"); d.hook.line = v("f-hook"); d.tease.rule = v("f-tease");
+    d.lead.why = v("f-lead-why"); d.hook.why = v("f-hook-why"); d.tease.why = v("f-tease-why"); d.guard = v("f-guard");
+    d.replies = $$(".rrow").map((row) => ({ step: $(".r-step", row).value, her: $(".r-her", row).value.trim(), me: $(".r-me", row).value.trim() }));
+  }
+  function rtExpand(r, btn) {
+    const out = $("#rt-ai-out");
+    const prompt = COACH_FRAME + "\n\n" + routineText(r) + "\n已經有的回覆：" + (r.replies.map((x) => x.her).join("、") || "（沒有）") +
+      "\n\n請推演她在鉤子之後可能的 5 種新回覆（不要跟已經有的重複），類型分別是：直接、害羞、反問、轉移話題、冷淡。每種給一句照「逗的做法」的回法；冷淡那種請給收回、換話題的說法。" +
+      '\n只回覆 JSON：{"replies":[{"type":"直接","her":"她的回覆","me":"你的回法"}]}';
+    runAI(out, btn, prompt, { modelTier: "default", cache: false }, (d) => {
+      const items = arr(d.replies).map((x) => ({ type: txt(x && x.type), her: txt(x && x.her), me: txt(x && x.me) })).filter((x) => x.her && x.me).slice(0, 6);
+      if (!items.length) { out.innerHTML = '<p class="err">沒拿到結果，再按一次試試。</p>'; return; }
+      rt.pending = items.map((x) => ({ step: "hook", her: x.her, me: x.me }));
+      out.innerHTML = items.map((x) => (x.type ? '<span class="mono">' + esc(x.type) + "</span>" : "") + pairHTML(x.her, x.me)).join("") +
+        '<div class="row"><button type="button" class="btn small primary" data-act="rt-add-ai">' + (r.builtin ? "存成我的版本，並加進去" : "全部加進這個劇本") + "</button></div>";
+    });
+  }
+  function rtFill(btn) {
+    syncDraft();
+    const d = rt.edit, err = $("#rt-form-err");
+    if (!d.lead.line || !d.hook.line || !d.tease.rule) { err.hidden = false; err.textContent = "AI 補完需要先填指引、鉤子和逗的做法。"; return; }
+    err.hidden = true;
+    const prompt = COACH_FRAME + "\n\n學員在寫一套聊天劇本：\n名稱：" + (d.title || "（還沒取）") + "\n階段：" + d.stage + "\n指引：" + d.lead.line + "\n鉤子：" + d.hook.line + "\n逗的做法：" + d.tease.rule +
+      "\n\n請幫他補完：使用時機；三個步驟各自為什麼有效；她在指引之後可能的 2 種回覆，以及轉到鉤子的話；她在鉤子之後可能的 5 種回覆，以及照「逗的做法」的回法（其中一種是冷淡，要給收回的說法）；收回的方法。" +
+      '\n只回覆 JSON：{"when":"...","leadWhy":"...","hookWhy":"...","teaseWhy":"...","guard":"...","replies":[{"step":"lead 或 hook","her":"...","me":"..."}]}';
+    runAI($("#rt-form-out"), btn, prompt, { modelTier: "default", cache: false }, (a) => {
+      if (rt.edit !== d) return; // 使用者已經離開表單
+      // 已經寫好的欄位不覆蓋
+      if (!d.when) d.when = txt(a.when);
+      if (!d.lead.why) d.lead.why = txt(a.leadWhy);
+      if (!d.hook.why) d.hook.why = txt(a.hookWhy);
+      if (!d.tease.why) d.tease.why = txt(a.teaseWhy);
+      if (!d.guard) d.guard = txt(a.guard);
+      const add = arr(a.replies).map((x) => ({ step: x && x.step === "lead" ? "lead" : "hook", her: txt(x && x.her), me: txt(x && x.me) })).filter((x) => x.her && x.me);
+      d.replies = d.replies.filter((x) => x.her || x.me).concat(add);
+      renderRoutines();
+      const o = $("#rt-form-out"); o.hidden = false;
+      o.innerHTML = '<p class="saved-msg">補上了 ' + add.length + " 組回覆和說明。看一下，沒問題再按儲存。</p>";
+    });
+  }
+  $("#v-routines").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const act = b.dataset.act, r = rt.open && routineById(rt.open);
+    const top = () => window.scrollTo({ top: 0 });
+    if (act === "rt-new") { rt.edit = blankRoutine(); renderRoutines(); top(); }
+    else if (act === "rt-open") { rt.open = b.dataset.id; rt.confirmDel = false; rt.pending = null; renderRoutines(); top(); }
+    else if (act === "rt-back") { rt.open = null; rt.confirmDel = false; renderRoutines(); }
+    else if (act === "save-line") { addLine(b.dataset.text, ""); flashSaved(b, "已收藏"); }
+    else if (act === "rt-copy" && r) { const c = copyAsMine(r); saveRoutine(c); rt.open = c.id; renderRoutines(); top(); }
+    else if (act === "rt-edit" && r) { rt.edit = cloneRoutine(r); renderRoutines(); top(); }
+    else if (act === "rt-del") { rt.confirmDel = true; renderRoutines(); }
+    else if (act === "rt-del-no") { rt.confirmDel = false; renderRoutines(); }
+    else if (act === "rt-del-yes" && r && !r.builtin) {
+      store.routines = store.routines.filter((x) => x.id !== r.id); dbDelete(r.id);
+      rt.open = null; rt.confirmDel = false; renderRoutines();
+    }
+    else if (act === "rt-expand" && r) rtExpand(r, b);
+    else if (act === "rt-add-ai" && r && rt.pending) {
+      const t = r.builtin ? copyAsMine(r) : r;
+      t.replies = t.replies.concat(rt.pending); rt.pending = null;
+      saveRoutine(t); rt.open = t.id; renderRoutines();
+    }
+    else if (act === "rt-ref" && r) {
+      const pool = practicePool(r), x = pool[rt.prac.idx % pool.length], out = $("#rt-ref-out");
+      out.hidden = false;
+      out.innerHTML = '<p class="pro-line">' + esc(x.me) + '</p><div class="row"><button type="button" class="btn small" data-act="save-line" data-text="' + esc(x.me) + '">收藏</button></div>';
+    }
+    else if (act === "rt-coach" && r) {
+      const line = $("#rt-try").value.trim(), out = $("#rt-coach-out");
+      if (!line) { out.hidden = false; out.innerHTML = '<p class="err">先寫你會怎麼回。</p>'; return; }
+      const pool = practicePool(r), x = pool[rt.prac.idx % pool.length];
+      const pseudo = { stage: r.stage, context: "學員在練自己的劇本「" + r.title + "」。使用時機：" + r.when + "。逗的做法：" + r.tease.rule,
+        chat: [{ who: "me", text: x.step === "lead" ? r.lead.line : r.hook.line }, { who: "her", text: x.her }] };
+      coach(pseudo, line, "照這套劇本的「逗」回覆她（" + r.tease.rule + "）。參考回法：" + x.me, out, b);
+    }
+    else if (act === "rt-next" && r) {
+      const n = practicePool(r).length;
+      rt.prac.idx = n > 1 ? (rt.prac.idx + 1 + Math.floor(Math.random() * (n - 1))) % n : 0;
+      $("#rt-practice").innerHTML = practiceHTML(r);
+    }
+    else if (act === "rt-cancel") { rt.edit = null; renderRoutines(); top(); }
+    else if (act === "rt-row-add") { syncDraft(); rt.edit.replies.push({ step: "hook", her: "", me: "" }); renderRoutines(); }
+    else if (act === "rt-row-del") { syncDraft(); rt.edit.replies.splice(Number(b.dataset.k), 1); renderRoutines(); }
+    else if (act === "rt-save") {
+      syncDraft();
+      const d = rt.edit, err = $("#rt-form-err");
+      if (!d.title || !d.lead.line || !d.hook.line || !d.tease.rule) { err.hidden = false; err.textContent = "名稱、指引、鉤子和逗的做法都要填。"; return; }
+      d.replies = d.replies.filter((x) => x.her && x.me);
+      if (!d.id) d.id = "r_" + Date.now();
+      saveRoutine(d); rt.edit = null; rt.open = d.id; renderRoutines(); top();
+    }
+    else if (act === "rt-fill") rtFill(b);
+  });
+
   /* ───────── theory ───────── */
   function renderTheory() {
     $("#principles").innerHTML = D.PRINCIPLES.map((p, i) => '<div class="pr"><h3><span class="mono">' + String(i + 1).padStart(2, "0") + "</span>" + esc(p.title) + "</h3><p>" + esc(p.body) + "</p></div>").join("");
@@ -890,13 +1129,14 @@ details.card[open] > summary::after{content:"－"}
   });
 
   /* ───────── routing ───────── */
-  const VIEWS = ["drill", "nav", "theory", "notes"];
+  const VIEWS = ["drill", "nav", "routines", "theory", "notes"];
   function show(v, fromHash) {
     if (!VIEWS.includes(v)) v = "drill";
     state.view = v;
     VIEWS.forEach((x) => { $("#v-" + x).hidden = x !== v; });
     $$(".tab").forEach((t) => { if (t.dataset.view === v) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
     if (v === "notes") renderNotes();
+    if (v === "routines") renderRoutines();
     if (v === "drill" && !$("#drill-card").innerHTML) renderDrill();
     if (!fromHash && location.hash !== "#" + v) history.replaceState(null, "", "#" + v);
     window.scrollTo({ top: 0 });
