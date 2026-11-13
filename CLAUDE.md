@@ -21,7 +21,10 @@
 - `bar/index.html`：酒吧口袋教練，現場搭訕用。只有深色主題、大字提詞卡，五個分頁：上場、口袋、話題、教練、紀錄。
   發布：Artifact publish `file_path: bar/index.html`, `files: {"data.js": "bar/data.js"}`, capabilities `{db:{}, user:{}, sample:{}}`，
   網址 https://claude.ai/artifact/VwH3GZoLrsoWpJoAiNo8nx。
-- `bar/data.js`：現場內容（`STATES` 狀況台詞、`SCENES` 場景開場、`THREADS` 接話公式、`SIGNALS`、`TOPICS` 常青＋季節、`LADDER` 任務階梯、`DRILLS` 酒吧練習題）。
+- `bar/data.js`：現場內容（`STATES` 狀況台詞、`COMBOS` 開場組合技、`SCENES` 場景開場、`THREADS` 接話公式、`SIGNALS`、`TOPICS` 常青＋季節、`GAMES` 酒吧小遊戲、`LADDER` 任務階梯、`DRILLS` 酒吧練習題）。
+  `COMBOS`：`{id, name, tag, formula, when, steps:[{k:"開"|"接"|"轉", line}], why, recover}`，口袋「還沒開口」預設顯示，上場可選「今晚主打一招」（存在 `night.combo`）。
+  `SCENES` 每個場景有 5 種開場：`situ` 情境、`coldread` 冷讀、`opinion` 意見、`game` 遊戲、`direct` 直接，加上 `follow`（她回了之後）。
+  開場不說謊（時間限制用「我只問一題就走」）、不打壓、不勸酒。
   話題只放內建的常青和季節題，不做時事。DRILLS 格式跟訓練台一樣，階段是 B0–B4。
   `ROUTINES` 是「升溫」狀況用的當面版劇本（唯讀，格式同訓練台）。兩個 Artifact 的 db 是分開的，
   在訓練台新增的劇本不會出現在這裡，要放進口袋教練就得改這個檔案。

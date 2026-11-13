@@ -72,7 +72,20 @@ textarea::placeholder{color:var(--muted)}
 .pk.sm b{font-size:14px;font-weight:500}
 .pk[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
 .pk[aria-pressed="true"] b{color:var(--accent)}
-.seg{display:inline-flex;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;align-self:flex-start}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.cat{appearance:none;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 13px;font-size:14px;line-height:1.3;cursor:pointer;color:var(--ink)}
+.cat[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);font-weight:700}
+.combo-step{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:baseline}
+.combo-step .k{font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--accent);text-align:center;border:1px solid var(--accent);border-radius:8px;line-height:1.7}
+.combo-step .say{font-size:20px}
+.formula{font-size:14px;color:var(--muted)}
+.why-line{font-size:14px}
+.why-line b{color:var(--accent)}
+.game{display:flex;flex-direction:column;gap:6px;padding:14px 0;border-bottom:1px solid var(--line)}
+.game:last-child{border-bottom:0}
+.game h3{font-size:16px;font-weight:700}
+.game .say{font-size:19px}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:3px;align-self:flex-start}
 .seg button{appearance:none;border:0;background:none;padding:7px 14px;border-radius:7px;font-size:14px;cursor:pointer;color:var(--muted)}
 .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:700}
 
@@ -225,6 +238,9 @@ details.card[open] > summary::after{content:"－"}
         <div class="ladder" id="ladder"></div>
         <div class="row" id="mission-row"></div>
       </div>
+      <h2 class="view-title">今晚主打一招 <span class="mono">COMBO</span></h2>
+      <p class="lede">挑一套開場組合技，今晚開場都先用它。口袋會先顯示這一招。</p>
+      <div class="card"><div class="chips" id="combo-pick"></div><div id="combo-note" style="display:flex;flex-direction:column;gap:6px"></div></div>
       <h2 class="view-title">出門前讀一遍 <span class="mono">MINDSET</span></h2>
       <div class="card" id="mindset" style="gap:0;padding-block:4px"></div>
       <h2 class="view-title">三題暖身 <span class="mono">WARM-UP</span></h2>
@@ -248,8 +264,11 @@ details.card[open] > summary::after{content:"－"}
         <p class="say" id="topic-say">按下面的按鈕，抽一個話題。</p>
         <div class="cue-foot"><span class="hint">從一題開始，聊不下去再抽。</span><button type="button" class="btn primary" id="topic-draw">抽一題</button></div>
       </div>
-      <div class="pick-grid three" id="topic-cats"></div>
+      <div class="chips" id="topic-cats"></div>
       <div class="card" id="topic-list"></div>
+      <h2 class="view-title">酒吧小遊戲 <span class="mono">GAMES</span></h2>
+      <p class="lede">聊不下去的時候，丟一個遊戲最快。</p>
+      <div class="card" id="games" style="gap:0;padding-block:2px"></div>
       <h2 class="view-title ai-only">AI 現抽 <span class="mono">LIVE</span></h2>
       <div class="card ai-only">
         <p class="hint">選一個氛圍，AI 給你五個話題。用你自己的 Claude 額度。</p>
@@ -271,6 +290,7 @@ details.card[open] > summary::after{content:"－"}
         <div class="fw"><span class="lbl">在哪裡</span><div class="pick-grid three" data-group="where"></div></div>
         <div class="fw"><span class="lbl">她</span><div class="pick-grid three" data-group="who"></div></div>
         <div class="fw"><span class="lbl">她在做什麼</span><div class="pick-grid three" data-group="doing"></div></div>
+        <div class="fw"><span class="lbl">用哪一招</span><div class="pick-grid three" data-group="combo"></div></div>
         <div class="fw">
           <label class="lbl" for="op-extra">補充（選填）</label>
           <input type="text" id="op-extra" placeholder="例如：她穿樂團T恤、在笑朋友">
@@ -434,7 +454,7 @@ details.card[open] > summary::after{content:"－"}
   }
   function tonight() {
     const k = nightKey();
-    if (!store.nights[k]) store.nights[k] = { date: k, mission: 0, done: false, counts: { flow: 0, normal: 0, reject: 0, contact: 0 }, log: [] };
+    if (!store.nights[k]) store.nights[k] = { date: k, mission: 0, done: false, counts: { flow: 0, normal: 0, reject: 0, contact: 0 }, log: [], combo: "" };
     return store.nights[k];
   }
   const saveNight = (n) => dbWrite("night_" + n.date, n);
@@ -488,10 +508,23 @@ details.card[open] > summary::after{content:"－"}
   const str = (v) => (v == null ? "" : String(v));
 
   /* ───────── 口袋 ───────── */
-  const pocket = { state: "pre", scene: "", type: "situ", idx: 0 };
+  const pocket = { state: "pre", scene: "", type: "situ", idx: 0, combo: "" };
   const STATE = Object.fromEntries(D.STATES.map((s) => [s.id, s]));
   const SCENE = Object.fromEntries(D.SCENES.map((s) => [s.id, s]));
-  const TYPES = [{ id: "situ", name: "情境式" }, { id: "opinion", name: "意見式" }, { id: "direct", name: "直接式" }];
+  const TYPES = [{ id: "situ", name: "情境" }, { id: "coldread", name: "冷讀" }, { id: "opinion", name: "意見" }, { id: "game", name: "遊戲" }, { id: "direct", name: "直接" }];
+  const COMBO = Object.fromEntries(D.COMBOS.map((c) => [c.id, c]));
+  const curCombo = () => COMBO[pocket.combo] || COMBO[tonight().combo] || D.COMBOS[0];
+  function comboHTML() {
+    const c = curCombo(), main = tonight().combo === c.id;
+    return '<div class="rv"><h4>開場組合技 <span class="mono">COMBO</span></h4><div class="chips">' +
+      D.COMBOS.map((x) => '<button type="button" class="cat" data-combo="' + x.id + '" aria-pressed="' + (x.id === c.id) + '">' + esc(x.name) + "</button>").join("") + "</div></div>" +
+      '<div class="cue"><div class="cue-foot"><span class="mono" style="color:var(--accent)">' + esc(c.tag) + (main ? "・今晚主打" : "") + '</span><button type="button" class="btn primary" data-act="next-combo">換一招</button></div>' +
+      '<p class="formula">' + esc(c.formula) + "</p>" +
+      c.steps.map((st) => '<div class="combo-step"><span class="k">' + esc(st.k) + '</span><p class="say">' + esc(st.line) + "</p></div>").join("") +
+      '<p class="hint">' + esc(c.when) + "</p></div>" +
+      '<p class="why-line"><b>為什麼有效　</b>' + esc(c.why) + "</p>" +
+      '<p class="tip"><b>收回　</b>' + esc(c.recover) + "</p>";
+  }
   function cueHTML(lines, i) {
     if (!lines.length) return "";
     const k = ((i % lines.length) + lines.length) % lines.length;
@@ -502,15 +535,14 @@ details.card[open] > summary::after{content:"－"}
     const s = STATE[pocket.state];
     let h = '<p class="goal">' + esc(s.goal) + "</p>";
     if (s.id === "pre") {
-      h += '<div class="fw"><span class="lbl">選場景</span><div class="pick-grid three">' + D.SCENES.map((sc) => '<button type="button" class="pk sm" data-scene="' + sc.id + '" aria-pressed="' + (sc.id === pocket.scene) + '"><b>' + esc(sc.name) + "</b></button>").join("") + "</div></div>";
       const sc = SCENE[pocket.scene];
+      if (!sc) h += comboHTML();
+      h += '<div class="fw"><span class="lbl">' + (sc ? "場景（再按一次回到組合技）" : "或選你眼前的場景") + '</span><div class="pick-grid three">' + D.SCENES.map((x) => '<button type="button" class="pk sm" data-scene="' + x.id + '" aria-pressed="' + (x.id === pocket.scene) + '"><b>' + esc(x.name) + "</b></button>").join("") + "</div></div>";
       if (sc) {
         h += '<p class="hint">' + esc(sc.cue) + "</p>" +
           '<div class="seg" role="group" aria-label="開場類型">' + TYPES.map((t) => '<button type="button" data-type="' + t.id + '" aria-pressed="' + (t.id === pocket.type) + '">' + t.name + "</button>").join("") + "</div>" +
           cueHTML(sc[pocket.type], pocket.idx) +
           '<div class="rv"><h4>她回了之後 <span class="mono">THEN</span></h4><ul class="lines">' + sc.follow.map((f) => "<li>" + esc(f) + "</li>").join("") + "</ul></div>";
-      } else {
-        h += '<div class="rv"><h4>萬用開場 <span class="mono">ANYWHERE</span></h4></div>' + cueHTML(s.lines, pocket.idx);
       }
     } else if (s.id === "interest") {
       h += '<div class="sig-cols"><div class="sig-good"><h4>有興趣</h4><ul>' + D.SIGNALS.good.map((x) => "<li>" + esc(x) + "</li>").join("") + '</ul></div><div class="sig-bad"><h4>沒興趣</h4><ul>' + D.SIGNALS.bad.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul></div></div>" +
@@ -542,11 +574,13 @@ details.card[open] > summary::after{content:"－"}
     if (b.dataset.state) { pocket.state = b.dataset.state; pocket.idx = 0; renderPocket(); $("#state-card").scrollIntoView({ block: "start" }); return; }
     if (b.dataset.scene) { pocket.scene = pocket.scene === b.dataset.scene ? "" : b.dataset.scene; pocket.idx = 0; }
     else if (b.dataset.type) { pocket.type = b.dataset.type; pocket.idx = 0; }
+    else if (b.dataset.combo) pocket.combo = b.dataset.combo;
+    else if (b.dataset.act === "next-combo") { const i = D.COMBOS.indexOf(curCombo()); pocket.combo = D.COMBOS[(i + 1) % D.COMBOS.length].id; }
     else if (b.dataset.act === "next-line") pocket.idx++;
     else return;
     renderPocket();
   });
-  const PANIC = D.THREADS.map((t) => t.ex).concat(STATE.stuck.lines.filter((l) => !l.includes("＿")));
+  const PANIC = D.THREADS.map((t) => t.ex).concat(STATE.stuck.lines.filter((l) => !l.includes("＿")), (D.TOPICS.evergreen.find((c) => c.id === "coldread") || { items: [] }).items);
   let lastPanic = -1;
   $("#panic").addEventListener("click", () => {
     let i; do { i = Math.floor(Math.random() * PANIC.length); } while (i === lastPanic && PANIC.length > 1);
@@ -563,7 +597,7 @@ details.card[open] > summary::after{content:"－"}
   CATS[0].items = CATS.slice(1).flatMap((c) => c.items);
   let cat = "season", lastTopic = "";
   function renderTopics() {
-    $("#topic-cats").innerHTML = CATS.map((c) => '<button type="button" class="pk sm" data-cat="' + c.id + '" aria-pressed="' + (c.id === cat) + '"><b>' + esc(c.name) + "</b></button>").join("");
+    $("#topic-cats").innerHTML = CATS.map((c) => '<button type="button" class="cat" data-cat="' + c.id + '" aria-pressed="' + (c.id === cat) + '">' + esc(c.name) + "</button>").join("");
     const c = CATS.find((x) => x.id === cat);
     $("#topic-list").innerHTML = '<h3 class="lbl">' + esc(c.name) + '</h3><ul class="lines big">' + (c.id === "all" ? CATS.slice(1).map((x) => x.items[0]) : c.items).map((t) => "<li>" + esc(t) + "</li>").join("") + "</ul>" +
       (c.id === "all" ? '<p class="hint">每類先列一題，點上面的分類看全部。</p>' : "");
@@ -576,6 +610,9 @@ details.card[open] > summary::after{content:"－"}
     $("#topic-say").textContent = t; $("#topic-label").textContent = c.name;
   }
   $("#topic-draw").addEventListener("click", drawTopic);
+  function renderGames() {
+    $("#games").innerHTML = D.GAMES.map((g) => '<div class="game"><h3>' + esc(g.name) + '</h3><p class="hint">' + esc(g.rules) + '</p><p class="say">' + esc(g.start) + '</p><p class="why-line"><b>提示　</b>' + esc(g.tip) + "</p></div>").join("");
+  }
   const VIBES = ["輕鬆搞笑", "有點深度", "曖昧一點", "適合一群人"];
   let vibe = VIBES[0];
   function renderVibes() { $("#vibes").innerHTML = VIBES.map((v) => '<button type="button" class="pk sm" data-vibe="' + v + '" aria-pressed="' + (v === vibe) + '"><b>' + v + "</b></button>").join(""); }
@@ -595,8 +632,9 @@ details.card[open] > summary::after{content:"－"}
     where: ["吧台", "桌邊", "戶外", "舞池旁", "排隊", "遊戲區"],
     who: ["一個人", "兩個人", "一群人"],
     doing: ["看酒單", "等酒", "看手機", "跟朋友聊", "跳舞", "玩遊戲"],
+    combo: ["隨便"].concat(D.COMBOS.map((c) => c.name)),
   };
-  const chosen = { where: "吧台", who: "一個人", doing: "看酒單" };
+  const chosen = { where: "吧台", who: "一個人", doing: "看酒單", combo: "隨便" };
   function renderGroups() {
     $$("[data-group]").forEach((g) => {
       const k = g.dataset.group;
@@ -606,9 +644,14 @@ details.card[open] > summary::after{content:"－"}
   $$("[data-group]").forEach((g) => g.addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (!b) return; chosen[g.dataset.group] = b.dataset.v; renderGroups(); }));
   $("#op-go").addEventListener("click", (e) => {
     const extra = $("#op-extra").value.trim();
-    const prompt = FRAME + "\n\n現場：地點＝" + chosen.where + "；她＝" + chosen.who + "；她在做＝" + chosen.doing + (extra ? "；補充＝" + extra : "") +
-      "\n請給三句開場：一句情境式（從現場觀察）、一句意見式（問她的看法）、一句直接式（誠實說想認識她，並給她出口）。再給兩句「她回了之後怎麼接」，和一個提示。" +
-      '\n只回覆 JSON：{"openers":[{"type":"情境式","line":"..."},{"type":"意見式","line":"..."},{"type":"直接式","line":"..."}],"follow":["...","..."],"tip":"..."}';
+    const cb = D.COMBOS.find((c) => c.name === chosen.combo);
+    const scene = FRAME + "\n\n現場：地點＝" + chosen.where + "；她＝" + chosen.who + "；她在做＝" + chosen.doing + (extra ? "；補充＝" + extra : "");
+    const prompt = cb
+      ? scene + "\n請用「" + cb.name + "」組合技：" + cb.formula + "。範例：開「" + cb.steps[0].line + "」接「" + cb.steps[1].line + "」轉「" + cb.steps[2].line + "」。" +
+        "依照現場改寫成三句：開、接、轉，不要照抄範例。再給兩句「她回了之後怎麼接」，和一個提示。" +
+        '\n只回覆 JSON：{"openers":[{"type":"開","line":"..."},{"type":"接","line":"..."},{"type":"轉","line":"..."}],"follow":["...","..."],"tip":"..."}'
+      : scene + "\n請給三句開場：一句情境式（從現場觀察）、一句冷讀式（大膽猜她的個性）、一句直接式（誠實說想認識她，並給她出口）。再給兩句「她回了之後怎麼接」，和一個提示。" +
+        '\n只回覆 JSON：{"openers":[{"type":"情境式","line":"..."},{"type":"冷讀式","line":"..."},{"type":"直接式","line":"..."}],"follow":["...","..."],"tip":"..."}';
     const out = $("#op-out");
     runAI(out, e.currentTarget, prompt, { modelTier: "quick", cache: false }, (d) => {
       const ops = arr(d.openers).slice(0, 4);
@@ -663,6 +706,11 @@ details.card[open] > summary::after{content:"－"}
     $("#ladder").innerHTML = D.LADDER.map((l) => '<button type="button" class="lv" data-lv="' + l.lv + '" aria-pressed="' + (n.mission === l.lv) + '"><span class="n">LV' + l.lv + "</span><b>" + esc(l.title) + (l.lv === rec ? '<span class="rec">建議</span>' : "") + '</b><span class="t">' + esc(l.task) + "</span></button>").join("");
     const lv = D.LADDER.find((l) => l.lv === n.mission);
     $("#mission-row").innerHTML = lv ? '<p class="tip" style="flex:1 1 100%"><b>Lv' + lv.lv + "　</b>" + esc(lv.tip) + '</p><button type="button" class="btn' + (n.done ? "" : " primary") + '" id="mission-done">' + (n.done ? "已完成，按一下取消" : "完成了") + "</button>" : '<p class="hint">還沒選今晚的任務。</p>';
+    const cb = COMBO[n.combo];
+    $("#combo-pick").innerHTML = D.COMBOS.map((c) => '<button type="button" class="cat" data-combo="' + c.id + '" aria-pressed="' + (c.id === n.combo) + '">' + esc(c.name) + "</button>").join("");
+    $("#combo-note").innerHTML = cb
+      ? '<p class="formula">' + esc(cb.tag) + "・" + esc(cb.formula) + '</p><p class="say" style="font-size:19px">' + esc(cb.steps[0].line) + "</p>"
+      : '<p class="hint">還沒選。不知道選哪個，就先選「承認緊張」。</p>';
     $("#mindset").innerHTML = D.MINDSET.map((m, i) => '<div class="pr"><h3><span class="mono">' + pad(i + 1) + "</span>" + esc(m.title) + "</h3><p>" + esc(m.body) + "</p></div>").join("");
   }
   $("#ladder").addEventListener("click", (e) => {
@@ -670,6 +718,12 @@ details.card[open] > summary::after{content:"－"}
     const n = tonight(), lv = Number(b.dataset.lv);
     if (n.mission !== lv) { n.mission = lv; n.done = false; }
     saveNight(n); renderPrep(); renderLog();
+  });
+  $("#combo-pick").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-combo]"); if (!b) return;
+    const n = tonight(); n.combo = n.combo === b.dataset.combo ? "" : b.dataset.combo;
+    pocket.combo = n.combo;
+    saveNight(n); renderPrep(); renderPocket(); renderLog();
   });
   $("#mission-row").addEventListener("click", (e) => {
     if (!e.target.closest("#mission-done")) return;
@@ -743,7 +797,7 @@ details.card[open] > summary::after{content:"－"}
     const lv = D.LADDER.find((l) => l.lv === n.mission);
     $("#night-date").textContent = fmtKey(n.date);
     $("#night-total").textContent = total;
-    $("#night-mission").textContent = lv ? "　任務 Lv" + lv.lv + " " + lv.title + (n.done ? "・完成" : "") : "　還沒選任務";
+    $("#night-mission").textContent = (lv ? "　任務 Lv" + lv.lv + " " + lv.title + (n.done ? "・完成" : "") : "　還沒選任務") + (COMBO[n.combo] ? "・主打：" + COMBO[n.combo].name : "");
     $("#outs").innerHTML = OUTCOMES.map((o) => '<button type="button" class="out" data-o="' + o.id + '"><b>' + o.name + "</b><span>" + c[o.id] + "</span></button>").join("");
     $("#undo").disabled = !n.log.length;
     const nights = Object.values(store.nights).filter((x) => x.counts && (x.counts.flow + x.counts.normal + x.counts.reject + x.counts.contact > 0 || x.done)).sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -796,7 +850,7 @@ details.card[open] > summary::after{content:"－"}
     lsLoad();
     if (snap && snap.pocket) Object.assign(pocket, snap.pocket);
     if (snap && snap.warm && Array.isArray(snap.warm.queue)) Object.assign(warm, snap.warm);
-    renderPocket(); renderTopics(); drawTopic(); renderVibes(); renderGroups(); renderPrep(); renderDrill(); renderLog();
+    renderPocket(); renderTopics(); drawTopic(); renderGames(); renderVibes(); renderGroups(); renderPrep(); renderDrill(); renderLog();
     show(location.hash.slice(1) || (snap && snap.view) || "pocket", true);
     dbInit(); aiInit();
   }
